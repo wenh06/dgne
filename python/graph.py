@@ -1,7 +1,7 @@
 """
 """
 
-from typing import NoReturn, Optional, Union
+from typing import NoReturn, Optional, Union, List
 
 import numpy as np
 import pandas as pd
@@ -16,15 +16,15 @@ class Graph(ReprMixin):
     __name__ = "Graph"
 
     def __init__(self,
-                 num_agents:Optional[int]=None,
+                 num_vertices:Optional[int]=None,
                  edge_set:Optional[Union[np.ndarray, list]]=None,
                  adj_mat:Optional[Union[np.ndarray, sparse.spmatrix, list]]=None) -> NoReturn:
         """
         """
         if adj_mat is None:
-            assert num_agents is not None and edge_set is None, \
-                "Either `adj_mat` is set, or `num_agents` and `edge_set` are set."
-            self._num_agents = num_agents
+            assert num_vertices is not None and edge_set is None, \
+                "Either `adj_mat` is set, or `num_vertices` and `edge_set` are set."
+            self._num_agents = num_vertices
             self._edge_set = np.array(edge_set, dtype=int)
             self._adj_mat = sparse.lil_matrix((self._num_agents, self._num_agents))
             self._adj_mat[self._edge_set[:, 0], self._edge_set[:, 1]] = 1
@@ -34,7 +34,7 @@ class Graph(ReprMixin):
         """
         """
         assert self._adj_mat.shape == (self._num_agents, self._num_agents), \
-            f"adj_mat must be of shape ({num_agents}, {num_agents}), but got {self._adj_mat.shape}."
+            f"adj_mat must be of shape ({num_vertices}, {num_vertices}), but got {self._adj_mat.shape}."
         assert sparse.find(self._adj_mat.T != self._adj_mat)[0].size == 0, \
             "The adjacency matrix must be symmetric."
         assert sparse.find(self._adj_mat < 0)[0].size == 0, \
@@ -43,9 +43,9 @@ class Graph(ReprMixin):
             "The graph must not have self-loops."
         assert self._edge_set.shape[1] == 2, "edge_set must be a 2-column matrix."
         assert self._edge_set.max() < self._num_agents, \
-            f"edge_set must be a matrix with entries in [0, {num_agents}), but got {self._edge_set.max()}."
+            f"edge_set must be a matrix with entries in [0, {num_vertices}), but got {self._edge_set.max()}."
         assert self._edge_set.min() >= 0, \
-            f"edge_set must be a matrix with entries in [0, {num_agents}), but got {self._edge_set.min()}."
+            f"edge_set must be a matrix with entries in [0, {num_vertices}), but got {self._edge_set.min()}."
         assert set(self._edge_set.flatten()) == set(range(self._num_agents)), \
             "The graph should be connected."
 
@@ -64,9 +64,14 @@ class Graph(ReprMixin):
         self._num_agents = self._adj_mat.shape[0]
         self._edge_set = \
             pd.DataFrame(np.column_stack(sparse.find(self._adj_mat)[:2])).sort_values(axis=0, by=[0,1]).values
+
+    def get_neighbors(self, vertex_id:int) -> List[int]:
+        """
+        """
+        return (self._adj_mat[vertex_id, :].nonzero()[1]).tolist()
     
     @property
-    def num_agents(self) -> int:
+    def num_vertices(self) -> int:
         return self._num_agents
 
     @property
@@ -82,3 +87,7 @@ class Graph(ReprMixin):
         return sparse.diags(
             np.array(self._adj_mat.sum(axis=1).sum(axis=1)).flatten()
         )
+
+    @property
+    def Laplacian(self) -> sparse.spmatrix:
+        return self.deg_mat - self._adj_mat
