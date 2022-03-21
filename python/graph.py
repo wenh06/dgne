@@ -1,7 +1,8 @@
 """
 """
 
-from typing import NoReturn, Optional, Union, List
+import random
+from typing import NoReturn, Optional, Union, List, Sequence
 
 import numpy as np
 import pandas as pd
@@ -22,13 +23,18 @@ class Graph(ReprMixin):
         """
         """
         if adj_mat is None:
-            assert num_vertices is not None and edge_set is None, \
+            assert num_vertices is not None and edge_set is not None, \
                 "Either `adj_mat` is set, or `num_vertices` and `edge_set` are set."
             self._num_agents = num_vertices
             self._edge_set = np.array(edge_set, dtype=int)
             self._adj_mat = sparse.lil_matrix((self._num_agents, self._num_agents))
+            self._adj_mat[:,:] = 0
             self._adj_mat[self._edge_set[:, 0], self._edge_set[:, 1]] = 1
-        self.__init_via_adj_mat(adj_mat)
+            self._adj_mat[self._edge_set[:, 1], self._edge_set[:, 0]] = 1
+        else:
+            self.__init_via_adj_mat(adj_mat)
+        self.__post_init()
+        self.__simplify_edge_set()
 
     def __post_init(self) -> NoReturn:
         """
@@ -54,16 +60,24 @@ class Graph(ReprMixin):
         """
         if isinstance(adj_mat, sparse.spmatrix):
             self._adj_mat = adj_mat
-        elif isinstance(adj_mat, [np.ndarray, list]):
+        elif isinstance(adj_mat, (np.ndarray, list)):
             self._adj_mat = sparse.lil_matrix(adj_mat)
         else:
             raise TypeError(
-                "edge_set must be a sparse matrix or a numpy array or list, "
-                f"but got {type(edge_set)}"
+                "adj_mat must be a sparse matrix or a numpy array or list, "
+                f"but got {type(adj_mat)}"
             )
         self._num_agents = self._adj_mat.shape[0]
         self._edge_set = \
             pd.DataFrame(np.column_stack(sparse.find(self._adj_mat)[:2])).sort_values(axis=0, by=[0,1]).values
+
+    def __simplify_edge_set(self) -> NoReturn:
+        """
+        """
+        self._edge_set = \
+            pd.DataFrame(np.column_stack(sparse.find(self._adj_mat)[:2])).sort_values(axis=0, by=[0,1]).values
+        keep_inds = np.where(self._edge_set[:, 0] < self._edge_set[:, 1])[0]
+        self._edge_set = self._edge_set[keep_inds]
 
     def get_neighbors(self, vertex_id:int) -> List[int]:
         """
@@ -79,6 +93,10 @@ class Graph(ReprMixin):
         return self._edge_set
 
     @property
+    def num_edges(self) -> int:
+        return self._edge_set.shape[0]
+
+    @property
     def adj_mat(self) -> sparse.spmatrix:
         return self._adj_mat
 
@@ -91,3 +109,31 @@ class Graph(ReprMixin):
     @property
     def Laplacian(self) -> sparse.spmatrix:
         return self.deg_mat - self._adj_mat
+
+    @property
+    def is_weighted(self) -> bool:
+        return sum([len(sparse.find(self.adj_mat == value)[0]) for value in [1]]) \
+            != len(sparse.find(self.adj_mat != 0)[0])
+
+    def extra_repr_keys(self) -> List[str]:
+        return ["num_vertices", "num_edges", "is_weighted",]
+
+    @classmethod
+    def random(cls,
+               num_vertices:int=10000,
+               num_neighbors:Sequence[int]=(3,20),
+               weight:Optional[Sequence[float]]=None) -> "Graph":
+        """
+        """
+        edge_set = np.array([
+            [i,j] for i in range(num_vertices-1) \
+                for j in random.sample(
+                    range(i+1, num_vertices),
+                    min(num_vertices-i-1, random.randint(num_neighbors[0], num_neighbors[1]))
+                )
+        ], dtype=int)
+        g = cls(num_vertices=num_vertices, edge_set=edge_set)
+        if weight is not None:
+            g._adj_mat[edge_set[:, 0], edge_set[:, 1]] = random.uniform(weight[0], weight[1])
+            g._adj_mat[edge_set[:, 1], edge_set[:, 0]] = g._adj_mat[edge_set[:, 0], edge_set[:, 1]]
+        return g
