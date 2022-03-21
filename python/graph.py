@@ -2,6 +2,7 @@
 """
 
 import random
+from pathlib import Path
 from typing import NoReturn, Optional, Union, List, Sequence
 
 import numpy as np
@@ -40,6 +41,22 @@ class Graph(ReprMixin):
         self.__post_init()
         self.__simplify_edge_set()
 
+    def __init_via_adj_mat(self, adj_mat:Union[np.ndarray, sparse.spmatrix, list]) -> NoReturn:
+        """
+        """
+        if isinstance(adj_mat, sparse.spmatrix):
+            self._adj_mat = adj_mat.tolil(copy=True)
+        elif isinstance(adj_mat, (np.ndarray, list)):
+            self._adj_mat = sparse.lil_matrix(adj_mat)
+        else:
+            raise TypeError(
+                "adj_mat must be a sparse matrix or a numpy array or list, "
+                f"but got {type(adj_mat)}"
+            )
+        self._num_agents = self._adj_mat.shape[0]
+        self._edge_set = \
+            pd.DataFrame(np.column_stack(sparse.find(self._adj_mat)[:2])).sort_values(axis=0, by=[0,1]).values
+
     def __post_init(self) -> NoReturn:
         """
         """
@@ -58,22 +75,6 @@ class Graph(ReprMixin):
             f"edge_set must be a matrix with entries in [0, {num_vertices}), but got {self._edge_set.min()}."
         assert set(self._edge_set.flatten()) == set(range(self._num_agents)), \
             "The graph should be connected."
-
-    def __init_via_adj_mat(self, adj_mat:Union[np.ndarray, sparse.spmatrix, list]) -> NoReturn:
-        """
-        """
-        if isinstance(adj_mat, sparse.spmatrix):
-            self._adj_mat = adj_mat
-        elif isinstance(adj_mat, (np.ndarray, list)):
-            self._adj_mat = sparse.lil_matrix(adj_mat)
-        else:
-            raise TypeError(
-                "adj_mat must be a sparse matrix or a numpy array or list, "
-                f"but got {type(adj_mat)}"
-            )
-        self._num_agents = self._adj_mat.shape[0]
-        self._edge_set = \
-            pd.DataFrame(np.column_stack(sparse.find(self._adj_mat)[:2])).sort_values(axis=0, by=[0,1]).values
 
     def __simplify_edge_set(self) -> NoReturn:
         """
@@ -162,3 +163,23 @@ class Graph(ReprMixin):
             g._adj_mat[edge_set[:, 0], edge_set[:, 1]] = random.uniform(weight[0], weight[1])
             g._adj_mat[edge_set[:, 1], edge_set[:, 0]] = g._adj_mat[edge_set[:, 0], edge_set[:, 1]]
         return g
+
+    def save(self, filepath:Union[str,Path]) -> str:
+        """
+        """
+        _filepath = Path(filepath).with_suffix(".npz")
+        sparse.save_npz(_filepath, self._adj_mat.tocsr())
+        return str(_filepath)
+
+    @classmethod
+    def load(cls, filepath:Union[str,Path]) -> "Graph":
+        """
+        """
+        g = cls(adj_mat=sparse.load_npz(Path(filepath).with_suffix(".npz")))
+        return g
+
+    @classmethod
+    def from_file(cls, filepath:Union[str,Path]) -> "Graph":
+        """
+        """
+        return cls.load(filepath)
