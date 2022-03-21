@@ -16,6 +16,9 @@ __all__ = [
     "CCS",
     "EuclideanSpace",
     "EuclideanPlus",
+    "HyperPlane",
+    "HalfSpace",
+    "Polyhedron",
     "LpBall",
     "L2Ball",
     "L1Ball",
@@ -48,6 +51,12 @@ class CCS(ReprMixin, ABC):
     def dim(self) -> int:
         raise NotImplementedError
 
+    @abstractmethod
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        raise NotImplementedError
+
     def extra_repr_keys(self) -> List[str]:
         """
         """
@@ -68,14 +77,21 @@ class EuclideanSpace(CCS):
     def dim(self) -> int:
         return self._dim
 
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self.dim
+
     def isin(self, point:np.ndarray) -> bool:
         """
         """
-        return point.shape[0] == self.dim
+        self._check_validity(point)
+        return True
 
     def projection(self, point:np.ndarray) -> np.ndarray:
         """
         """
+        self._check_validity(point)
         return point
 
 
@@ -93,11 +109,16 @@ class EuclideanPlus(CCS):
     def dim(self) -> int:
         return self._dim
 
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self.dim
+
     def isin(self, point:np.ndarray) -> bool:
         """
         """
-        return point.shape[0] == self.dim \
-            and np.all(point >= 0)
+        self._check_validity(point)
+        return np.all(point >= 0)
 
     def projection(self, point:np.ndarray) -> np.ndarray:
         """
@@ -110,6 +131,127 @@ class EuclideanPlus(CCS):
         return proj_point
 
 
+class HyperPlane(CCS):
+    """
+    """
+    __name__ = "HyperPlane"
+
+    def __init__(self, normal_vec:np.ndarray, offset:float) -> NoReturn:
+        """
+        """
+        self._normal_vec = np.array(normal_vec)
+        self._offset = offset
+
+    @property
+    def dim(self) -> int:
+        return self._normal_vec.shape[0] - 1
+
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self.dim + 1
+
+    def isin(self, point:np.ndarray) -> bool:
+        """
+        """
+        self._check_validity(point)
+        return np.dot(self._normal_vec, point) == self._offset
+
+    def projection(self, point:np.ndarray) -> np.ndarray:
+        """
+        """
+        self._check_validity(point)
+        proj_point = point + \
+            (self._offset - np.dot(self._normal_vec, point)) * self._normal_vec / np.linalg.norm(self._normal_vec)**2
+        return proj_point
+
+
+class HalfSpace(CCS):
+    """
+    """
+    __name__ = "HalfSpace"
+
+    def __init__(self, normal_vec:np.ndarray, offset:float) -> NoReturn:
+        """
+        """
+        self._normal_vec = np.array(normal_vec)
+        self._offset = offset
+
+    @property
+    def dim(self) -> int:
+        return self._normal_vec.shape[0]
+
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self.dim
+
+    def isin(self, point:np.ndarray) -> bool:
+        """
+        """
+        self._check_validity(point)
+        return np.dot(self._normal_vec, point) <= self._offset
+
+    def projection(self, point:np.ndarray) -> np.ndarray:
+        """
+        """
+        if self.isin(point):
+            return point
+        proj_point = point + \
+            (self._offset - np.dot(self._normal_vec, point)) * self._normal_vec / np.linalg.norm(self._normal_vec)**2
+        return proj_point
+
+
+class Polyhedron(CCS):
+    """
+    """
+    __name__ = "Polyhedron"
+
+    def __init__(self, inequalities:Optional[np.ndarray]=None, equalities:Optional[np.ndarray]=None) -> NoReturn:
+        """
+        Example:
+        >>> inequalities = np.array([[0,-1,0], [0,1,1], [-1,0,0], [1,0,1]])
+        >>> ph = Polyhedron(inequalities)
+        """
+        if inequalities is None:
+            self._equalities = np.array(equalities)
+            self._inequalities = np.array([]).reshape(0, self._equalities.shape[1])
+        elif equalities is None:
+            self._inequalities = np.array(inequalities)
+            self._equalities = np.array([]).reshape(0, self._inequalities.shape[1])
+        else:
+            self._inequalities = np.array(inequalities)
+            self._equalities = np.array(equalities)
+        assert self._equalities.shape[1] == self._inequalities.shape[1]
+        if self._equalities.shape[0] > 0:
+            assert np.linalg.matrix_rank(self._equalities) == np.linalg.matrix_rank(self._equalities[:, :-1])
+
+    @property
+    def dim(self) -> int:
+        if self._equalities.shape[0] > 0:
+            return self._inequalities.shape[1] - 1 - np.linalg.matrix_rank(self._equalities)
+        return self._inequalities.shape[1] - 1
+
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self._inequalities.shape[1] - 1
+
+    def isin(self, point:np.ndarray) -> bool:
+        """
+        """
+        self._check_validity(point)
+        return (np.dot(self._equalities[:, :-1], point) == self._equalities[:, -1]).all() \
+            and (np.dot(self._inequalities[:, :-1], point) <= self._inequalities[:, -1]).all()
+
+    def projection(self, point:np.ndarray) -> np.ndarray:
+        """
+        """
+        if self.isin(point):
+            return point
+        raise NotImplementedError
+
+
 class LpBall(CCS):
     """
     """
@@ -120,18 +262,23 @@ class LpBall(CCS):
         """
         assert p >= 1, "p must be >= 1 to be convex"
         self.p = p
-        self.center = center
+        self.center = np.array(center)
         self.radius = radius
 
     @property
     def dim(self) -> int:
         return self.center.shape[0]
 
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self.dim
+
     def isin(self, point:np.ndarray) -> bool:
         """
         """
-        return point.shape[0] == self.dim \
-            and np.linalg.norm(point-self.center, ord=self.p) <= self.radius
+        self._check_validity(point)
+        return np.linalg.norm(point-self.center, ord=self.p) <= self.radius
 
     def extra_repr_keys(self) -> List[str]:
         """
@@ -203,11 +350,16 @@ class Simplex(CCS):
     def dim(self) -> int:
         return self._dim
 
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self.dim
+
     def isin(self, point:np.ndarray) -> bool:
         """
         """
-        return point.shape[0] == self.dim \
-            and point.sum() <= 1
+        self._check_validity(point)
+        return point.sum() <= 1
 
     def projection(self, point:np.ndarray) -> np.ndarray:
         """
@@ -228,6 +380,11 @@ class ConvexHull(_ConvexHull, CCS):
     @property
     def dim(self) -> int:
         return self.points.shape[1]
+
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self.dim
 
     def isin(self, point:np.ndarray) -> bool:
         """
