@@ -7,6 +7,10 @@ from typing import NoReturn, Optional, Union, List, Sequence
 import numpy as np
 import pandas as pd
 from scipy import sparse
+try:
+    from tqdm.auto import tqdm, trange
+except:
+    from tqdm import tqdm, trange
 
 from utils import ReprMixin
 
@@ -107,6 +111,10 @@ class Graph(ReprMixin):
         )
 
     @property
+    def Deg(self) -> sparse.spmatrix:
+        return self.deg_mat
+
+    @property
     def Laplacian(self) -> sparse.spmatrix:
         return self.deg_mat - self._adj_mat
 
@@ -125,15 +133,32 @@ class Graph(ReprMixin):
                weight:Optional[Sequence[float]]=None) -> "Graph":
         """
         """
-        edge_set = np.array([
-            [i,j] for i in range(num_vertices-1) \
-                for j in random.sample(
-                    range(i+1, num_vertices),
-                    min(num_vertices-i-1, random.randint(num_neighbors[0], num_neighbors[1]))
-                )
-        ], dtype=int)
+        # edge_set = np.array([
+        #     [i,j] for i in range(num_vertices-1) \
+        #         for j in random.sample(
+        #             range(i+1, num_vertices),
+        #             min(num_vertices-i-1, random.randint(num_neighbors[0], num_neighbors[1]))
+        #         )
+        # ], dtype=int)
+        edge_set = np.array([], dtype=int).reshape(0,2)
+        for i in trange(num_vertices-1, desc="Generating edge set", unit="vertex"):
+            n_i = len(np.where(edge_set[:,1] == i)[0])
+            if n_i >= num_neighbors[1]:
+                continue
+            low = max(0, num_neighbors[0] - n_i)
+            high = max(0, num_neighbors[1] - n_i)
+            edge_set = np.vstack(
+                (edge_set, np.array([
+                    [i,j] for j in random.sample(
+                        range(i+1, num_vertices),
+                        min(num_vertices-i-1, random.randint(low, high))
+                    )
+                ], dtype=int).reshape(-1,2))
+            )
+        print("Creating graph...")
         g = cls(num_vertices=num_vertices, edge_set=edge_set)
         if weight is not None:
+            print("Assigning weights...")
             g._adj_mat[edge_set[:, 0], edge_set[:, 1]] = random.uniform(weight[0], weight[1])
             g._adj_mat[edge_set[:, 1], edge_set[:, 0]] = g._adj_mat[edge_set[:, 0], edge_set[:, 1]]
         return g
