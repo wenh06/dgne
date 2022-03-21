@@ -12,6 +12,11 @@ from graph import Graph
 from ccs import CCS, EuclideanPlus
 
 
+__all__ = [
+    "Agent",
+]
+
+
 class Agent(ReprMixin):
     """
     """
@@ -24,8 +29,30 @@ class Agent(ReprMixin):
                  intercept:np.ndarray,
                  objective:Callable[[np.ndarray, np.ndarray], float],
                  objective_grad:Callable[[np.ndarray, np.ndarray], np.ndarray],
-                 step_sizes:Sequence[float]=[0.1,0.1,0.1],) -> NoReturn:
+                 step_sizes:Sequence[float]=[0.1,0.1,0.1],
+                 alpha:Optional[float]=None) -> NoReturn:
         """
+
+        Parameters
+        ----------
+        agent_id : int,
+            agent id
+        ccs : CCS,
+            closed convex set, of dimension n
+        ceoff : np.ndarray,
+            coefficient of the agent linear constraint,
+            of shape (m, n)
+        intercept : np.ndarray,
+            intercept of the agent linear constraint,
+            of shape (m,)
+        objective : Callable[[np.ndarray, np.ndarray], float],
+            objective function,
+            takes self.x and self.decision_profile(others) as input
+        objective_grad : Callable[[np.ndarray, np.ndarray], np.ndarray],
+            gradient of the objective function,
+        step_sizes : Sequence[float],
+            3-tuples of step sizes for x, z, and lam, respectively,
+            namely tau, nu, and sigma, respectively.
         """
         self.agent_id = agent_id
         self.ccs = ccs
@@ -34,17 +61,20 @@ class Agent(ReprMixin):
         self._objective = objective
         self._objective_grad = objective_grad
         self.tau, self.nu, self.sigma = step_sizes
+        self.alpha = alpha
         self._ep = EuclideanPlus(self._intercept.shape[0])
 
-        assert self.dim == self._coeff.shape[1]  # n_i
-        assert self._coeff.shape[0] == self._intercept.shape[0]  # m
-        assert self._intercept.shape[1] == 1
+        assert self.dim == self.A.shape[1]  # n_i
+        assert self.A.shape[0] == self.b.shape[0]  # m
 
         self._decision = np.zeros((dim,1))  # x_i
         self._multiplier = np.zeros((self._coeff.shape[0],1))  # lambda_i
         self._aux_var = np.zeros((self._coeff.shape[0],1))  # z_i
         self._prev_decision = self._decision.copy()
         self._prev_aux_var = self._aux_var.copy()
+        self._prev_multiplier = None
+        if self.alpha is not None:
+            self._prev_multiplier = self._multiplier.copy()
 
     def update(self,
                others:List["Agent"],
@@ -52,8 +82,8 @@ class Agent(ReprMixin):
                multiplier_graph:Graph,) -> NoReturn:
         """
         """
-        self._prev_decision = self._decision.copy()
-        self._prev_aux_var = self._aux_var.copy()
+        self._prev_decision = self.x.copy()
+        self._prev_aux_var = self.z.copy()
         interference_inds = [
             i for i, other in enumerate(others) if \
                 other.agent_id in interference_graph.get_neighbors(self.agent_id)
@@ -63,13 +93,14 @@ class Agent(ReprMixin):
                 other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
         ]
         self._decision = self.ccs.projection(
-            self.x - self.tau * self._objective_grad(
+            self.extrapolated_decision - self.tau * self._objective_grad(
                 self.x, self.decision_profile(others, True)
-            ) - np.dot(self._coeff.T, self.lam)
+            ) - np.dot(self.A.T, self.lam)
         )
 
-        self._aux_var += self.nu * sum([
-            multiplier_graph.adj_mat[self.agent_id, others[j].agent_id] * \
+        W = multiplier_graph.adj_mat
+        self._aux_var = self.extrapolated_aux_var + self.nu * sum([
+            W[self.agent_id, others[j].agent_id] * \
                 (self.lam - others[j].lam) for j in multiplier_inds
         ])
 
@@ -82,11 +113,15 @@ class Agent(ReprMixin):
             i for i, other in enumerate(others) if \
                 other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
         ]
-        raise NotImplementedError
+        W = multiplier_graph.adj_mat
         self._multiplier = self._ep.projection(
-            self.lam - self.sigma * (
-                np.dot(self._coeff, 2*self.x - self._prev_aux_var) - self._intercept + \
-                sum([])  # TODO
+            self.extrapolated_multiplier - self.sigma * (
+                np.dot(self.A, 2*self.x - self._prev_aux_var) - self.b + \
+                sum([
+                    W[self.agent_id, others[j].agent_id] * (2*(self.z - others[j].z) - (self._prev_aux_var - others[j]._previous_aux_var)) \
+                        for j in multiplier_inds
+                ]) + \
+                sum([W[self.agent_id, others[j].agent_id] * (self.lam - others[j].lam) for j in multiplier_inds])
             )
         )
 
@@ -117,6 +152,32 @@ class Agent(ReprMixin):
     @property
     def z(self) -> np.ndarray:
         return self.aux_var
+
+    @property
+    def A(self) -> np.ndarray:
+        return self._coeff
+
+    @property
+    def b(self) -> np.ndarray:
+        return self._intercept
+
+    @property
+    def extrapolated_decision(self) -> np.ndarray:
+        if self.alpha is None:
+            return self.x
+        return self.x + self.alpha * (self.x - self._prev_decision)
+
+    @property
+    def extrapolated_aux_var(self) -> np.ndarray:
+        if self.alpha is None:
+            return self.z
+        return self.z + self.alpha * (self.z - self._prev_aux_var)
+
+    @property
+    def extrapolated_multiplier(self) -> np.ndarray:
+        if self.alpha is None:
+            return self.lam
+        return self.lam + self.alpha * (self.lam - self._prev_multiplier)
 
     def degree(self, adj_mat:np.ndarray) -> Real:
         """

@@ -110,7 +110,7 @@ class EuclideanPlus(CCS):
         return proj_point
 
 
-class LpBall(CSS):
+class LpBall(CCS):
     """
     """
     __name__ = "LpBall"
