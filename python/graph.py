@@ -43,8 +43,8 @@ class Graph(ReprMixin):
             self._adj_mat[self._edge_set[:, 1], self._edge_set[:, 0]] = 1
         else:
             self.__init_via_adj_mat(adj_mat)
-        self.__post_init()
         self.__simplify_edge_set()
+        self.__post_init()
 
     def __init_via_adj_mat(self, adj_mat:Union[np.ndarray, sparse.spmatrix, list]) -> NoReturn:
         """
@@ -78,7 +78,7 @@ class Graph(ReprMixin):
             f"edge_set must be a matrix with entries in [0, {num_vertices}), but got {self._edge_set.max()}."
         assert self._edge_set.min() >= 0, \
             f"edge_set must be a matrix with entries in [0, {num_vertices}), but got {self._edge_set.min()}."
-        assert set(self._edge_set.flatten()) == set(range(self._num_agents)), \
+        assert is_connected(self), \
             "The graph should be connected."
 
     def __simplify_edge_set(self) -> NoReturn:
@@ -136,7 +136,8 @@ class Graph(ReprMixin):
     def random(cls,
                num_vertices:int=10000,
                num_neighbors:Sequence[int]=(3,20),
-               weight:Optional[Sequence[float]]=None) -> "Graph":
+               weight:Optional[Sequence[float]]=None,
+               retry:int=10,) -> "Graph":
         """
         """
         # edge_set = np.array([
@@ -146,23 +147,31 @@ class Graph(ReprMixin):
         #             min(num_vertices-i-1, random.randint(num_neighbors[0], num_neighbors[1]))
         #         )
         # ], dtype=int)
-        edge_set = np.array([], dtype=int).reshape(0,2)
-        for i in trange(num_vertices-1, desc="Generating edge set", unit="vertex"):
-            n_i = len(np.where(edge_set[:,1] == i)[0])
-            if n_i >= num_neighbors[1]:
-                continue
-            low = max(0, num_neighbors[0] - n_i)
-            high = max(0, num_neighbors[1] - n_i)
-            edge_set = np.vstack(
-                (edge_set, np.array([
-                    [i,j] for j in random.sample(
-                        range(i+1, num_vertices),
-                        min(num_vertices-i-1, random.randint(low, high))
-                    )
-                ], dtype=int).reshape(-1,2))
-            )
-        print("Creating graph...")
-        g = cls(num_vertices=num_vertices, edge_set=edge_set)
+        attempts = 0
+        while attempts < retry:
+            edge_set = np.array([], dtype=int).reshape(0,2)
+            for i in trange(num_vertices-1, desc="Generating edge set", unit="vertex"):
+                n_i = len(np.where(edge_set[:,1] == i)[0])
+                if n_i >= num_neighbors[1]:
+                    continue
+                low = max(0, num_neighbors[0] - n_i)
+                high = max(0, num_neighbors[1] - n_i)
+                edge_set = np.vstack(
+                    (edge_set, np.array([
+                        [i,j] for j in random.sample(
+                            range(i+1, num_vertices),
+                            min(num_vertices-i-1, random.randint(low, high))
+                        )
+                    ], dtype=int).reshape(-1,2))
+                )
+            print("Creating graph...")
+            try:
+                g = cls(num_vertices=num_vertices, edge_set=edge_set)
+                break
+            except Exception as e:
+                print(e)
+                print("Retrying...")
+                attempts += 1
         if weight is not None:
             print("Assigning weights...")
             g._adj_mat[edge_set[:, 0], edge_set[:, 1]] = random.uniform(weight[0], weight[1])
@@ -188,3 +197,27 @@ class Graph(ReprMixin):
         """
         """
         return cls.load(filepath)
+
+
+def is_connected(g:Graph) -> bool:
+    """
+    """
+    return sum(1 for node in _plain_bfs(g, 0)) == g.num_vertices
+
+
+def _plain_bfs(g:Graph, source:int):
+    """
+    A fast BFS node generator
+    
+    modified from networkx.algorithms.components.connected
+    """
+    seen = set()
+    nextlevel = {source}
+    while nextlevel:
+        thislevel = nextlevel
+        nextlevel = set()
+        for v in thislevel:
+            if v not in seen:
+                seen.add(v)
+                nextlevel.update(g.get_neighbors(v))
+    return seen
