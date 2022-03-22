@@ -9,7 +9,7 @@ from scipy import sparse
 
 from utils import ReprMixin
 from graph import Graph
-from ccs import CCS, EuclideanPlus
+from ccs import CCS, NonnegativeOrthant, EuclideanSpace
 
 
 __all__ = [
@@ -62,14 +62,15 @@ class Agent(ReprMixin):
         self._objective_grad = objective_grad
         self.tau, self.nu, self.sigma = step_sizes
         self.alpha = alpha
-        self._ep = EuclideanPlus(self._offset.shape[0])
+        self._nno = NonnegativeOrthant(self.b.shape[0])
+        self._es = EuclideanSpace(self.b.shape[0])
 
         assert self.dim == self.A.shape[1]  # n_i
         assert self.A.shape[0] == self.b.shape[0]  # m
 
-        self._decision = np.zeros((dim,1))  # x_i
-        self._multiplier = np.zeros((self._coeff.shape[0],1))  # lambda_i
-        self._aux_var = np.zeros((self._coeff.shape[0],1))  # z_i
+        self._decision = self.ccs.random_point()  # x_i
+        self._multiplier = self._nno.random_point()  # lambda_i
+        self._aux_var = self._es.random_point()  # z_i
         self._prev_decision = self._decision.copy()
         self._prev_aux_var = self._aux_var.copy()
         self._prev_multiplier = None
@@ -105,7 +106,7 @@ class Agent(ReprMixin):
         ])
 
     def dual_update(self,
-                    multiplier_neighbors:List["Agent"],
+                    others:List["Agent"],
                     multiplier_graph:Graph,) -> NoReturn:
         """
         """
@@ -114,11 +115,11 @@ class Agent(ReprMixin):
                 other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
         ]
         W = multiplier_graph.adj_mat
-        self._multiplier = self._ep.projection(
+        self._multiplier = self._nno.projection(
             self.extrapolated_multiplier - self.sigma * (
-                np.matmul(self.A, 2*self.x - self._prev_aux_var) - self.b + \
+                np.matmul(self.A, 2*self.x - self._prev_decision) - self.b + \
                 sum([
-                    W[self.agent_id, others[j].agent_id] * (2*(self.z - others[j].z) - (self._prev_aux_var - others[j]._previous_aux_var)) \
+                    W[self.agent_id, others[j].agent_id] * (2*(self.z - others[j].z) - (self._prev_aux_var - others[j]._prev_aux_var)) \
                         for j in multiplier_inds
                 ]) + \
                 sum([W[self.agent_id, others[j].agent_id] * (self.lam - others[j].lam) for j in multiplier_inds])
