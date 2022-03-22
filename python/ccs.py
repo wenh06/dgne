@@ -3,7 +3,7 @@ Closed Convex Set
 """
 
 from abc import ABC, abstractmethod
-from typing import NoReturn, List, Optional
+from typing import NoReturn, List, Optional, Union, Sequence
 from numbers import Real
 
 import numpy as np
@@ -110,10 +110,13 @@ class EuclideanSpace(CCS):
         self._check_validity(point)
         return point
 
-    def random_point(self) -> np.ndarray:
+    def random_point(self, bounds:Union[Real,Sequence[Real]]=10) -> np.ndarray:
         """
         """
-        return np.random.uniform(-10, 10, self.embedded_dim)
+        if isinstance(bounds, Real):
+            bounds = (-abs(bounds), abs(bounds))
+        assert len(bounds) == 2 and bounds[0] < bounds[1]
+        return np.random.uniform(bounds[0], bounds[1], self.embedded_dim)
 
 
 class NonnegativeOrthant(CCS):
@@ -155,10 +158,11 @@ class NonnegativeOrthant(CCS):
         proj_point[neg_inds] = 0
         return proj_point
 
-    def random_point(self) -> np.ndarray:
+    def random_point(self, bound:Real=10) -> np.ndarray:
         """
         """
-        return np.random.uniform(0, 10, self.embedded_dim)
+        assert bound > 0
+        return np.random.uniform(0, bound, self.embedded_dim)
 
 class Polyhedron(CCS):
     """
