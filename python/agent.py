@@ -26,7 +26,7 @@ class Agent(ReprMixin):
                  agent_id:int,
                  ccs:CCS,
                  ceoff:np.ndarray,
-                 intercept:np.ndarray,
+                 offset:np.ndarray,
                  objective:Callable[[np.ndarray, np.ndarray], float],
                  objective_grad:Callable[[np.ndarray, np.ndarray], np.ndarray],
                  step_sizes:Sequence[float]=[0.1,0.1,0.1],
@@ -42,8 +42,8 @@ class Agent(ReprMixin):
         ceoff : np.ndarray,
             coefficient of the agent linear constraint,
             of shape (m, n)
-        intercept : np.ndarray,
-            intercept of the agent linear constraint,
+        offset : np.ndarray,
+            offset of the agent linear constraint,
             of shape (m,)
         objective : Callable[[np.ndarray, np.ndarray], float],
             objective function,
@@ -57,12 +57,12 @@ class Agent(ReprMixin):
         self.agent_id = agent_id
         self.ccs = ccs
         self._coeff = np.array(ceoff)  # A_i, shape (m, n_i)
-        self._intercept = np.array(intercept)  # b_i, shape (m,)
+        self._offset = np.array(offset)  # b_i, shape (m,)
         self._objective = objective
         self._objective_grad = objective_grad
         self.tau, self.nu, self.sigma = step_sizes
         self.alpha = alpha
-        self._ep = EuclideanPlus(self._intercept.shape[0])
+        self._ep = EuclideanPlus(self._offset.shape[0])
 
         assert self.dim == self.A.shape[1]  # n_i
         assert self.A.shape[0] == self.b.shape[0]  # m
@@ -95,7 +95,7 @@ class Agent(ReprMixin):
         self._decision = self.ccs.projection(
             self.extrapolated_decision - self.tau * self._objective_grad(
                 self.x, self.decision_profile(others, True)
-            ) - np.dot(self.A.T, self.lam)
+            ) - np.matmul(self.A.T, self.lam)
         )
 
         W = multiplier_graph.adj_mat
@@ -116,7 +116,7 @@ class Agent(ReprMixin):
         W = multiplier_graph.adj_mat
         self._multiplier = self._ep.projection(
             self.extrapolated_multiplier - self.sigma * (
-                np.dot(self.A, 2*self.x - self._prev_aux_var) - self.b + \
+                np.matmul(self.A, 2*self.x - self._prev_aux_var) - self.b + \
                 sum([
                     W[self.agent_id, others[j].agent_id] * (2*(self.z - others[j].z) - (self._prev_aux_var - others[j]._previous_aux_var)) \
                         for j in multiplier_inds
@@ -127,7 +127,7 @@ class Agent(ReprMixin):
 
     @property
     def dim(self) -> int:
-        return self.ccs.dim
+        return self._coeff.shape[1]
 
     @property
     def decision(self) -> np.ndarray:
@@ -159,7 +159,7 @@ class Agent(ReprMixin):
 
     @property
     def b(self) -> np.ndarray:
-        return self._intercept
+        return self._offset
 
     @property
     def extrapolated_decision(self) -> np.ndarray:
