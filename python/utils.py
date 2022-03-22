@@ -3,6 +3,18 @@
 
 from typing import List
 
+import numpy as np
+
+
+__all__ = [
+    "SEED", "RNG",
+    "ReprMixin",
+]
+
+
+SEED = 42
+RNG = np.random.default_rng(seed=SEED)
+
 
 def default_class_repr(c:object, align:str="center", depth:int=1) -> str:
     """ finished, checked,

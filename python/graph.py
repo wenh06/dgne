@@ -1,7 +1,6 @@
 """
 """
 
-import random
 from pathlib import Path
 from functools import partial
 from typing import NoReturn, Optional, Union, List, Sequence, Callable
@@ -14,7 +13,7 @@ try:
 except:
     from tqdm import tqdm, trange
 
-from utils import ReprMixin
+from utils import ReprMixin, RNG
 
 
 __all__ = [
@@ -141,13 +140,6 @@ class Graph(ReprMixin):
                retry:int=10,) -> "Graph":
         """
         """
-        # edge_set = np.array([
-        #     [i,j] for i in range(num_vertices-1) \
-        #         for j in random.sample(
-        #             range(i+1, num_vertices),
-        #             min(num_vertices-i-1, random.randint(num_neighbors[0], num_neighbors[1]))
-        #         )
-        # ], dtype=int)
         attempts = 0
         while attempts < retry:
             edge_set = np.array([], dtype=int).reshape(0,2)
@@ -159,9 +151,10 @@ class Graph(ReprMixin):
                 high = max(0, num_neighbors[1] - n_i)
                 edge_set = np.vstack(
                     (edge_set, np.array([
-                        [i,j] for j in random.sample(
+                        [i,j] for j in RNG.choice(
                             range(i+1, num_vertices),
-                            min(num_vertices-i-1, random.randint(low, high))
+                            min(num_vertices-i-1, RNG.integers(low, high, endpoint=True)),
+                            replace=False
                         )
                     ], dtype=int).reshape(-1,2))
                 )
@@ -206,7 +199,7 @@ class Graph(ReprMixin):
         return cls.load(filepath)
 
     def random_weights(self,
-                       generator:Callable[[int], np.ndarray]=partial(np.random.uniform, 0.0, 1.0)) -> NoReturn:
+                       generator:Callable[[int], np.ndarray]=partial(RNG.uniform, 0.0, 1.0)) -> NoReturn:
         """
         """
         self.assign_weights(weights=generator(self.num_edges))

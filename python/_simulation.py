@@ -10,14 +10,13 @@ from ccs import Rectangle
 from networked_cournot_game import (
     Company, NetworkedCournotGame
 )
+from utils import RNG
 
 
 __all__ = [
     "run_simulation",
 ]
 
-
-rng = np.random.default_rng(seed=42)
 
 num_companies, num_markets = 20, 7
 
@@ -77,9 +76,9 @@ multiplier_graph = Graph(num_vertices=num_companies, edge_set=multiplier_edge_se
 
 num_markets = 7
 
-market_capacities = rng.uniform(0.5, 1, num_markets)
-market_P = rng.uniform(2, 4, num_markets)
-market_D = rng.uniform(0.5, 1, num_markets)
+market_capacities = RNG.uniform(0.5, 1, num_markets)
+market_P = RNG.uniform(2, 4, num_markets)
+market_D = RNG.uniform(0.5, 1, num_markets)
 
 
 num_company_market_connection = np.ones(num_companies, dtype=int)

@@ -9,7 +9,7 @@ from numbers import Real
 import numpy as np
 from scipy.spatial import ConvexHull as _ConvexHull
 
-from utils import ReprMixin
+from utils import ReprMixin, RNG
 
 
 __all__ = [
@@ -116,7 +116,7 @@ class EuclideanSpace(CCS):
         if isinstance(bounds, Real):
             bounds = (-abs(bounds), abs(bounds))
         assert len(bounds) == 2 and bounds[0] < bounds[1]
-        return np.random.uniform(bounds[0], bounds[1], self.embedded_dim)
+        return RNG.uniform(bounds[0], bounds[1], self.embedded_dim)
 
 
 class NonnegativeOrthant(CCS):
@@ -162,7 +162,7 @@ class NonnegativeOrthant(CCS):
         """
         """
         assert bound > 0
-        return np.random.uniform(0, bound, self.embedded_dim)
+        return RNG.uniform(0, bound, self.embedded_dim)
 
 class Polyhedron(CCS):
     """
@@ -234,7 +234,7 @@ class HyperPlane(Polyhedron):
     def random_point(self) -> np.ndarray:
         """
         """
-        return self.projection(np.random.uniform(-10, 10, self.embedded_dim))
+        return self.projection(RNG.uniform(-10, 10, self.embedded_dim))
 
 
 class HalfSpace(Polyhedron):
@@ -261,7 +261,7 @@ class HalfSpace(Polyhedron):
         """
         """
         return self._hyperplane.random_point() + \
-            np.random.uniform(-10, 0) * self._normal_vec
+            RNG.uniform(-10, 0) * self._normal_vec
 
 
 class Rectangle(Polyhedron):
@@ -302,7 +302,7 @@ class Rectangle(Polyhedron):
     def random_point(self) -> np.ndarray:
         """
         """
-        return np.random.uniform(self._lower_bounds, self._upper_bounds)
+        return RNG.uniform(self._lower_bounds, self._upper_bounds)
 
     @property
     def lower_bounds(self) -> np.ndarray:
@@ -353,7 +353,7 @@ class LpBall(CCS):
         """
         bound = self.radius / np.power(self.embedded_dim, 1/self.p)
         return self.projection(
-            self.center + np.random.uniform(-bound, bound, self.embedded_dim)
+            self.center + RNG.uniform(-bound, bound, self.embedded_dim)
         )
 
     def extra_repr_keys(self) -> List[str]:
