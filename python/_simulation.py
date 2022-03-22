@@ -1,6 +1,7 @@
 """
 """
 
+from functools import partial
 from typing import NoReturn
 
 import numpy as np
@@ -18,9 +19,12 @@ __all__ = [
 ]
 
 
+# section 7
+
+# setups
 num_companies, num_markets = 20, 7
 
-
+# Fig. 1
 market_company_connections = np.array([
     [1,1], [1,2], [1,5], [1,6], [1,10],
     [2,2], [2,3], [2,6],
@@ -31,6 +35,7 @@ market_company_connections = np.array([
     [7,15], [7,16], [7,17], [7,18], [7,19], [7,20],
 ], dtype=int) - 1
 
+# interference edge set from Fig. 1
 interference_edge_set = []
 for i in range(num_companies-1):
     for m in market_company_connections[np.where(market_company_connections[:,1] == i)[0]][:,0]:
@@ -62,47 +67,71 @@ interference_edge_set = np.array([
 ], dtype=int) - 1
 """
 
+# construct interference graph
 interference_graph = Graph(num_vertices=num_companies, edge_set=interference_edge_set)
 # interference_graph.random_weights()
 
 
+# multiplier edge set, decribed in section 7.2 as
+# "We adopt a ring graph arranged in alphabetical order with additional edges (2, 15), (6, 13) as the multiplier graph"
 multiplier_edge_set = np.array([
     [i, i+1] for i in range(num_companies-1)
 ] + [[num_companies-1, 0]] + [[2,15], [6,13]], dtype=int)
 
+# construct multiplier graph
 multiplier_graph = Graph(num_vertices=num_companies, edge_set=multiplier_edge_set)
 # multiplier_graph.random_weights()
 
 
-num_markets = 7
-
+# Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
 market_capacities = RNG.uniform(0.5, 1, num_markets)
+# randomly drawn from [2, 4] and [0.5, 1]
 market_P = RNG.uniform(2, 4, num_markets)
 market_D = RNG.uniform(0.5, 1, num_markets)
 
 
-num_company_market_connection = np.ones(num_companies, dtype=int)
-num_company_market_connection[2-1] = 2
-num_company_market_connection[6-1] = 4
-num_company_market_connection[8-1] = 2
-num_company_market_connection[10-1] = 3
-num_company_market_connection[11-1] = 2
-num_company_market_connection[15-1] = 3
-num_company_market_connection[16-1] = 2
-num_company_market_connection[17-1] = 2
+# Player i decides its strategy in the competition
+# in n_i markets by delivering x_i ∈ R^n_i amount of products to the
+# markets it connects with
+num_company_market_connection = np.array([
+    (market_company_connections[:,1]==i).sum() for i in range(num_companies)
+], dtype=int)  # the n_i's
+
+
+# πi is randomly drawn from [1, 8],
+# and each component of bi is randomly drawn from [0.1, 0.6].
+product_cost_parameters = dict(
+    pi = [RNG.integers(1, 8, endpoint=True) for _ in range(num_companies)],
+    b = [RNG.uniform(0.1, 0.6, n) for n in num_company_market_connection],
+)
+
+def product_cost(pi:int, b:np.ndarray, decision:np.ndarray,) -> float:
+    """
+    """
+    decision = np.array(decision).flatten()
+    return pi * np.linalg.norm(decision)**2 + np.dot(decision, b)
+
+def product_cost_grad(pi:int, b:np.ndarray, decision:np.ndarray,) -> np.ndarray:
+    """
+    gradient of `product_cost`
+    """
+    decision = np.array(decision).flatten()
+    return 2 * pi * decision + b
 
 
 companies = [
     Company(
         company_id=i,
         ccs=Rectangle(
+            # Player i has a local constraint 0 < xi < Θ_i
+            # and each component of Θ_i is randomly drawn from [1, 1.5].
             np.zeros((num_company_market_connection[i]),),
-            rng.uniform(1, 1.5, num_company_market_connection[i]),
+            RNG.uniform(1, 1.5, num_company_market_connection[i]),
         ),
         # market_price=,
         # market_price_grad=,
-        # product_cost=,
-        # product_cost_grad=,
+        product_cost=partial(product_cost, product_cost_parameters["pi"][i], product_cost_parameters["b"][i]),
+        product_cost_grad=partial(product_cost_grad, product_cost_parameters["pi"][i], product_cost_parameters["b"][i]),
         step_sizes=(0.03,0.2,0.03),
     ) for i in range(num_companies)
 ]
