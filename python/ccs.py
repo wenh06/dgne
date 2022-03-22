@@ -63,6 +63,12 @@ class CCS(ReprMixin, ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def random_point(self) -> np.ndarray:
+        """
+        """
+        raise NotImplementedError
+
     def extra_repr_keys(self) -> List[str]:
         """
         """
@@ -104,6 +110,11 @@ class EuclideanSpace(CCS):
         self._check_validity(point)
         return point
 
+    def random_point(self) -> np.ndarray:
+        """
+        """
+        return np.random.uniform(-10, 10, self.embedded_dim)
+
 
 class NonnegativeOrthant(CCS):
     """
@@ -144,6 +155,10 @@ class NonnegativeOrthant(CCS):
         proj_point[neg_inds] = 0
         return proj_point
 
+    def random_point(self) -> np.ndarray:
+        """
+        """
+        return np.random.uniform(0, 10, self.embedded_dim)
 
 class Polyhedron(CCS):
     """
@@ -212,6 +227,11 @@ class HyperPlane(Polyhedron):
             (self._offset - np.dot(self._normal_vec, point)) * self._normal_vec / np.linalg.norm(self._normal_vec)**2
         return proj_point
 
+    def random_point(self) -> np.ndarray:
+        """
+        """
+        return self.projection(np.random.uniform(-10, 10, self.embedded_dim))
+
 
 class HalfSpace(Polyhedron):
     """
@@ -232,6 +252,12 @@ class HalfSpace(Polyhedron):
         if self.isin(point):
             return point
         return self._hyperplane.projection(point)
+
+    def random_point(self) -> np.ndarray:
+        """
+        """
+        return self._hyperplane.random_point() + \
+            np.random.uniform(-10, 0) * self._normal_vec
 
 
 class Rectangle(Polyhedron):
@@ -268,6 +294,11 @@ class Rectangle(Polyhedron):
         """
         """
         return np.array(point).clip(self._lower_bounds, self._upper_bounds)
+
+    def random_point(self) -> np.ndarray:
+        """
+        """
+        return np.random.uniform(self._lower_bounds, self._upper_bounds)
 
     @property
     def lower_bounds(self) -> np.ndarray:
@@ -312,6 +343,14 @@ class LpBall(CCS):
         """
         self._check_validity(point)
         return np.linalg.norm(point-self.center, ord=self.p) <= self.radius
+
+    def random_point(self) -> np.ndarray:
+        """
+        """
+        bound = self.radius / np.power(self.embedded_dim, 1/self.p)
+        return self.projection(
+            self.center + np.random.uniform(-bound, bound, self.embedded_dim)
+        )
 
     def extra_repr_keys(self) -> List[str]:
         """
@@ -403,6 +442,11 @@ class Simplex(CCS):
         """
         raise NotImplementedError
 
+    def random_point(self) -> np.ndarray:
+        """
+        """
+        raise NotImplementedError
+
 
 class ConvexHull(_ConvexHull, CCS):
     """
@@ -433,6 +477,11 @@ class ConvexHull(_ConvexHull, CCS):
         raise NotImplementedError
 
     def projection(self, point:np.ndarray) -> np.ndarray:
+        """
+        """
+        raise NotImplementedError
+
+    def random_point(self) -> np.ndarray:
         """
         """
         raise NotImplementedError
