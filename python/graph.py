@@ -137,7 +137,7 @@ class Graph(ReprMixin):
     def random(cls,
                num_vertices:int=10000,
                num_neighbors:Sequence[int]=(3,20),
-               weight:Optional[Sequence[float]]=None,
+               weight:Optional[Union[bool,Sequence[float]]]=None,
                retry:int=10,) -> "Graph":
         """
         """
@@ -173,9 +173,16 @@ class Graph(ReprMixin):
                 print(e)
                 print("Retrying...")
                 attempts += 1
-        if weight is not None:
-            print("Assigning weights...")
+
+        if weight is None:
+            return g
+
+        print("Assigning weights...")
+        if weight is True:
             g.random_weights()
+        else:
+            g.assign_weights(weight)
+
         return g
 
     def save(self, filepath:Union[str,Path]) -> str:
@@ -202,9 +209,24 @@ class Graph(ReprMixin):
                        generator:Callable[[int], np.ndarray]=partial(np.random.uniform, 0.0, 1.0)) -> NoReturn:
         """
         """
-        self._adj_mat[self.edge_set[:, 0], self.edge_set[:, 1]] = generator(self.num_edges)
-        self._adj_mat[self.edge_set[:, 1], self.edge_set[:, 0]] = \
-            self._adj_mat[self.edge_set[:, 0], self.edge_set[:, 1]]
+        self.assign_weights(weights=generator(self.num_edges))
+
+    def assign_weights(self, weights:Union[np.ndarray, sparse.spmatrix, list]) -> NoReturn:
+        """
+        """
+        if isinstance(weights, list):
+            weights = np.array(weights)
+        if weights.shape == self.adj_mat.shape:
+            self._adj_mat[:, :] = weights
+        elif weights.shape == (self.num_edges,):
+            self._adj_mat[self.edge_set[:, 0], self.edge_set[:, 1]] = weights
+            self._adj_mat[self.edge_set[:, 1], self.edge_set[:, 0]] = \
+                self._adj_mat[self.edge_set[:, 0], self.edge_set[:, 1]]
+        else:
+            raise ValueError(
+                "The shape of weights should be the same as the shape of the adjacency matrix, "
+                "or a vector of length num_edges."
+            )
 
 
 def is_connected(g:Graph) -> bool:
