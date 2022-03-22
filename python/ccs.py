@@ -51,6 +51,11 @@ class CCS(ReprMixin, ABC):
     def dim(self) -> int:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def embedded_dim(self) -> int:
+        raise NotImplementedError
+
     @abstractmethod
     def _check_validity(self, point:np.ndarray) -> NoReturn:
         """
@@ -76,6 +81,10 @@ class EuclideanSpace(CCS):
     @property
     def dim(self) -> int:
         return self._dim
+
+    @property
+    def embedded_dim(self) -> int:
+        return self.dim
 
     def _check_validity(self, point:np.ndarray) -> NoReturn:
         """
@@ -109,6 +118,10 @@ class EuclideanPlus(CCS):
     def dim(self) -> int:
         return self._dim
 
+    @property
+    def embedded_dim(self) -> int:
+        return self.dim
+
     def _check_validity(self, point:np.ndarray) -> NoReturn:
         """
         """
@@ -128,77 +141,6 @@ class EuclideanPlus(CCS):
         neg_inds = np.where(point < 0)[0]
         proj_point = point.copy()
         proj_point[neg_inds] = 0
-        return proj_point
-
-
-class HyperPlane(CCS):
-    """
-    """
-    __name__ = "HyperPlane"
-
-    def __init__(self, normal_vec:np.ndarray, offset:float) -> NoReturn:
-        """
-        """
-        self._normal_vec = np.array(normal_vec)
-        self._offset = offset
-
-    @property
-    def dim(self) -> int:
-        return self._normal_vec.shape[0] - 1
-
-    def _check_validity(self, point:np.ndarray) -> NoReturn:
-        """
-        """
-        assert point.shape[0] == self.dim + 1
-
-    def isin(self, point:np.ndarray) -> bool:
-        """
-        """
-        self._check_validity(point)
-        return np.dot(self._normal_vec, point) == self._offset
-
-    def projection(self, point:np.ndarray) -> np.ndarray:
-        """
-        """
-        self._check_validity(point)
-        proj_point = point + \
-            (self._offset - np.dot(self._normal_vec, point)) * self._normal_vec / np.linalg.norm(self._normal_vec)**2
-        return proj_point
-
-
-class HalfSpace(CCS):
-    """
-    """
-    __name__ = "HalfSpace"
-
-    def __init__(self, normal_vec:np.ndarray, offset:float) -> NoReturn:
-        """
-        """
-        self._normal_vec = np.array(normal_vec)
-        self._offset = offset
-
-    @property
-    def dim(self) -> int:
-        return self._normal_vec.shape[0]
-
-    def _check_validity(self, point:np.ndarray) -> NoReturn:
-        """
-        """
-        assert point.shape[0] == self.dim
-
-    def isin(self, point:np.ndarray) -> bool:
-        """
-        """
-        self._check_validity(point)
-        return np.dot(self._normal_vec, point) <= self._offset
-
-    def projection(self, point:np.ndarray) -> np.ndarray:
-        """
-        """
-        if self.isin(point):
-            return point
-        proj_point = point + \
-            (self._offset - np.dot(self._normal_vec, point)) * self._normal_vec / np.linalg.norm(self._normal_vec)**2
         return proj_point
 
 
@@ -232,6 +174,10 @@ class Polyhedron(CCS):
             return self._inequalities.shape[1] - 1 - np.linalg.matrix_rank(self._equalities)
         return self._inequalities.shape[1] - 1
 
+    @property
+    def embedded_dim(self) -> int:
+        return self._equalities.shape[1] - 1
+
     def _check_validity(self, point:np.ndarray) -> NoReturn:
         """
         """
@@ -247,9 +193,53 @@ class Polyhedron(CCS):
     def projection(self, point:np.ndarray) -> np.ndarray:
         """
         """
+        raise NotImplementedError
+
+
+class HyperPlane(Polyhedron):
+    """
+    """
+    __name__ = "HyperPlane"
+
+    def __init__(self, normal_vec:np.ndarray, offset:float) -> NoReturn:
+        """
+        """
+        self._normal_vec = np.array(normal_vec)
+        self._offset = offset
+        super().__init__(None, np.append(self._normal_vec, self._offset)[np.newaxis, :])
+
+    def projection(self, point:np.ndarray) -> np.ndarray:
+        """
+        """
+        self._check_validity(point)
+        proj_point = point + \
+            (self._offset - np.dot(self._normal_vec, point)) * self._normal_vec / np.linalg.norm(self._normal_vec)**2
+        return proj_point
+
+
+class HalfSpace(Polyhedron):
+    """
+    """
+    __name__ = "HalfSpace"
+
+    def __init__(self, normal_vec:np.ndarray, offset:float) -> NoReturn:
+        """
+        """
+        self._normal_vec = np.array(normal_vec)
+        self._offset = offset
+        super().__init__(np.append(self._normal_vec, self._offset)[np.newaxis, :], None)
+        self._hyperplane = HyperPlane(self._normal_vec, self._offset)
+
+    @property
+    def dim(self) -> int:
+        return self._normal_vec.shape[0]
+
+    def projection(self, point:np.ndarray) -> np.ndarray:
+        """
+        """
         if self.isin(point):
             return point
-        raise NotImplementedError
+        return self._hyperplane.projection(point)
 
 
 class LpBall(CCS):
@@ -268,6 +258,10 @@ class LpBall(CCS):
     @property
     def dim(self) -> int:
         return self.center.shape[0]
+
+    @property
+    def embedded_dim(self) -> int:
+        return self.dim
 
     def _check_validity(self, point:np.ndarray) -> NoReturn:
         """
@@ -350,6 +344,10 @@ class Simplex(CCS):
     def dim(self) -> int:
         return self._dim
 
+    @property
+    def embedded_dim(self) -> int:
+        return self.dim
+
     def _check_validity(self, point:np.ndarray) -> NoReturn:
         """
         """
@@ -380,6 +378,10 @@ class ConvexHull(_ConvexHull, CCS):
     @property
     def dim(self) -> int:
         return self.points.shape[1]
+
+    @property
+    def embedded_dim(self) -> int:
+        return self.dim
 
     def _check_validity(self, point:np.ndarray) -> NoReturn:
         """
