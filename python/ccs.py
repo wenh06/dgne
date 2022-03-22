@@ -241,6 +241,8 @@ class Rectangle(Polyhedron):
 
     def __init__(self, lower_bounds:np.ndarray, upper_bounds:np.ndarray) -> NoReturn:
         """
+        Example:
+        >>> rect = Rectangle(np.zeros(10), np.ones(10))
         """
         self._lower_bounds = np.array(lower_bounds)
         self._upper_bounds = np.array(upper_bounds)
@@ -266,6 +268,17 @@ class Rectangle(Polyhedron):
         """
         """
         return np.array(point).clip(self._lower_bounds, self._upper_bounds)
+
+    @property
+    def lower_bounds(self) -> np.ndarray:
+        return self._lower_bounds
+
+    @property
+    def upper_bounds(self) -> np.ndarray:
+        return self._upper_bounds
+
+    def extra_repr_keys(self) -> List[str]:
+        return super().extra_repr_keys() + ["lower_bounds", "upper_bounds",]
 
 
 class LpBall(CCS):
