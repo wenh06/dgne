@@ -49,10 +49,12 @@ class Agent(ReprMixin):
             objective function,
             takes self.x and self.decision_profile(others) as input
         objective_grad : Callable[[np.ndarray, np.ndarray], np.ndarray],
-            gradient of the objective function,
+            gradient of the objective function
         step_sizes : Sequence[float],
             3-tuples of step sizes for x, z, and lam, respectively,
-            namely tau, nu, and sigma, respectively.
+            namely tau, nu, and sigma, respectively
+        alpha: float, optional,
+            factor for the extrapolation of the variables (x, z, lambda)
         """
         self.agent_id = agent_id
         self.ccs = ccs
@@ -69,8 +71,10 @@ class Agent(ReprMixin):
         assert self.A.shape[0] == self.b.shape[0]  # m
 
         self._decision = self.ccs.random_point()  # x_i
-        self._multiplier = self._nno.random_point()  # lambda_i
-        self._aux_var = self._es.random_point()  # z_i
+        # self._multiplier = self._nno.random_point()  # lambda_i
+        self._multiplier = np.zeros((self._nno.dim,))
+        # self._aux_var = self._es.random_point()  # z_i
+        self._aux_var = np.zeros((self._es.dim,))
         self._prev_decision = self._decision.copy()
         self._prev_aux_var = self._aux_var.copy()
         self._prev_multiplier = None
