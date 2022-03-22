@@ -35,6 +35,7 @@ market_company_connections = np.array([
     [7,15], [7,16], [7,17], [7,18], [7,19], [7,20],
 ], dtype=int) - 1
 
+
 # interference edge set from Fig. 1
 interference_edge_set = []
 for i in range(num_companies-1):
@@ -72,11 +73,41 @@ interference_graph = Graph(num_vertices=num_companies, edge_set=interference_edg
 # interference_graph.random_weights()
 
 
+# Player i decides its strategy in the competition
+# in n_i markets by delivering x_i ∈ R^n_i amount of products to the
+# markets it connects with
+num_company_market_connection = np.array([
+    (market_company_connections[:,1]==i).sum() for i in range(num_companies)
+], dtype=int)  # the n_i's
+
+
+# The j-th column of A_i, denoted by [A_i]_{:j}, has only one element as
+# 1, all the other ones being 0; [A_i]_{:j} has its k-th element equal to
+# 1 if and only if player i delivers [x_i]_j production to M_k
+
+company_parameters = {
+    "ceoff": [],
+    "offset": [],
+}
+for i in range(num_companies):
+    coeff = np.zeros((num_markets, num_company_market_connection[i]))
+    current_markets = \
+        market_company_connections[np.where(market_company_connections[:,1] == i)[0]][:,0]
+    for j, m in enumerate(current_markets):
+        coeff[m,j] = 1
+    offset = np.zeros((num_markets,))
+    company_parameters["ceoff"].append(coeff)
+    company_parameters["offset"].append(offset)
+total_coeff = np.concatenate(company_parameters["ceoff"], axis=1)
+total_offset = sum(company_parameters["offset"])
+
+
 # multiplier edge set, decribed in section 7.2 as
-# "We adopt a ring graph arranged in alphabetical order with additional edges (2, 15), (6, 13) as the multiplier graph"
+# "We adopt a ring graph arranged in alphabetical order
+# with additional edges (2, 15), (6, 13) as the multiplier graph"
 multiplier_edge_set = np.array([
     [i, i+1] for i in range(num_companies-1)
-] + [[num_companies-1, 0]] + [[2,15], [6,13]], dtype=int)
+] + [[num_companies-1, 0], [2-1,15-1], [6-1,13-1]], dtype=int)
 
 # construct multiplier graph
 multiplier_graph = Graph(num_vertices=num_companies, edge_set=multiplier_edge_set)
@@ -90,12 +121,22 @@ market_P = RNG.uniform(2, 4, num_markets)
 market_D = RNG.uniform(0.5, 1, num_markets)
 
 
-# Player i decides its strategy in the competition
-# in n_i markets by delivering x_i ∈ R^n_i amount of products to the
-# markets it connects with
-num_company_market_connection = np.array([
-    (market_company_connections[:,1]==i).sum() for i in range(num_companies)
-], dtype=int)  # the n_i's
+def market_price(company_id:int, decision:np.ndarray, profile:np.ndarray) -> float:
+    """
+    """
+    split_inds = np.append(0, np.cumsum(num_company_market_connection))
+    mp = market_P - market_D * np.matmul(
+        total_coeff,
+        np.insert(profile, split_inds[company_id], decision)
+    )
+    return mp
+
+def market_price_grad(company_id:int, decision:np.ndarray, profile:np.ndarray) -> np.ndarray:
+    """
+    gradient as a function from R^m to R^m
+    """
+    mpg = -np.diag(market_D)
+    return mpg
 
 
 # πi is randomly drawn from [1, 8],
@@ -113,7 +154,7 @@ def product_cost(pi:int, b:np.ndarray, decision:np.ndarray,) -> float:
 
 def product_cost_grad(pi:int, b:np.ndarray, decision:np.ndarray,) -> np.ndarray:
     """
-    gradient of `product_cost`
+    gradient of `product_cost` w.r.t. decision
     """
     decision = np.array(decision).flatten()
     return 2 * pi * decision + b
@@ -123,13 +164,14 @@ companies = [
     Company(
         company_id=i,
         ccs=Rectangle(
-            # Player i has a local constraint 0 < xi < Θ_i
+            # Player i has a local constraint 0 < x_i < Θ_i
             # and each component of Θ_i is randomly drawn from [1, 1.5].
             np.zeros((num_company_market_connection[i]),),
             RNG.uniform(1, 1.5, num_company_market_connection[i]),
         ),
-        # market_price=,
-        # market_price_grad=,
+        ceoff=company_parameters["ceoff"][i],
+        market_price=partial(market_price, i),
+        market_price_grad=partial(market_price_grad, i),
         product_cost=partial(product_cost, product_cost_parameters["pi"][i], product_cost_parameters["b"][i]),
         product_cost_grad=partial(product_cost_grad, product_cost_parameters["pi"][i], product_cost_parameters["b"][i]),
         step_sizes=(0.03,0.2,0.03),
