@@ -15,10 +15,11 @@ from utils import ReprMixin
 __all__ = [
     "CCS",
     "EuclideanSpace",
-    "EuclideanPlus",
+    "NonnegativeOrthant",
+    "Polyhedron",
     "HyperPlane",
     "HalfSpace",
-    "Polyhedron",
+    "Rectangle",
     "LpBall",
     "L2Ball",
     "L1Ball",
@@ -104,10 +105,10 @@ class EuclideanSpace(CCS):
         return point
 
 
-class EuclideanPlus(CCS):
+class NonnegativeOrthant(CCS):
     """
     """
-    __name__ = "EuclideanPlus"
+    __name__ = "NonnegativeOrthant"
 
     def __init__(self, dim:int) -> NoReturn:
         """
@@ -190,11 +191,6 @@ class Polyhedron(CCS):
         return (np.dot(self._equalities[:, :-1], point) == self._equalities[:, -1]).all() \
             and (np.dot(self._inequalities[:, :-1], point) <= self._inequalities[:, -1]).all()
 
-    def projection(self, point:np.ndarray) -> np.ndarray:
-        """
-        """
-        raise NotImplementedError
-
 
 class HyperPlane(Polyhedron):
     """
@@ -230,16 +226,46 @@ class HalfSpace(Polyhedron):
         super().__init__(np.append(self._normal_vec, self._offset)[np.newaxis, :], None)
         self._hyperplane = HyperPlane(self._normal_vec, self._offset)
 
-    @property
-    def dim(self) -> int:
-        return self._normal_vec.shape[0]
-
     def projection(self, point:np.ndarray) -> np.ndarray:
         """
         """
         if self.isin(point):
             return point
         return self._hyperplane.projection(point)
+
+
+class Rectangle(Polyhedron):
+    """
+    """
+    __name__ = "Rectangle"
+
+    def __init__(self, lower_bounds:np.ndarray, upper_bounds:np.ndarray) -> NoReturn:
+        """
+        """
+        self._lower_bounds = np.array(lower_bounds)
+        self._upper_bounds = np.array(upper_bounds)
+        assert self._lower_bounds.shape[0] == self._upper_bounds.shape[0]
+        dim = self._lower_bounds.shape[0]
+        inequlities = np.concatenate(
+            (-np.eye(dim), -self._lower_bounds[:, np.newaxis]),
+            axis=1
+        )
+        inequlities = np.concatenate(
+            (
+                inequlities,
+                np.concatenate(
+                    (np.eye(dim), self._upper_bounds[:, np.newaxis]),
+                    axis=1
+                )
+            ),
+            axis=0
+        )
+        super().__init__(inequlities, None)
+
+    def projection(self, point:np.ndarray) -> np.ndarray:
+        """
+        """
+        return np.array(point).clip(self._lower_bounds, self._upper_bounds)
 
 
 class LpBall(CCS):
