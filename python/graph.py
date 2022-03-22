@@ -3,7 +3,8 @@
 
 import random
 from pathlib import Path
-from typing import NoReturn, Optional, Union, List, Sequence
+from functools import partial
+from typing import NoReturn, Optional, Union, List, Sequence, Callable
 
 import numpy as np
 import pandas as pd
@@ -174,8 +175,7 @@ class Graph(ReprMixin):
                 attempts += 1
         if weight is not None:
             print("Assigning weights...")
-            g._adj_mat[edge_set[:, 0], edge_set[:, 1]] = random.uniform(weight[0], weight[1])
-            g._adj_mat[edge_set[:, 1], edge_set[:, 0]] = g._adj_mat[edge_set[:, 0], edge_set[:, 1]]
+            g.random_weights()
         return g
 
     def save(self, filepath:Union[str,Path]) -> str:
@@ -197,6 +197,14 @@ class Graph(ReprMixin):
         """
         """
         return cls.load(filepath)
+
+    def random_weights(self,
+                       generator:Callable[[int], np.ndarray]=partial(np.random.uniform, 0.0, 1.0)) -> NoReturn:
+        """
+        """
+        self._adj_mat[self.edge_set[:, 0], self.edge_set[:, 1]] = generator(self.num_edges)
+        self._adj_mat[self.edge_set[:, 1], self.edge_set[:, 0]] = \
+            self._adj_mat[self.edge_set[:, 0], self.edge_set[:, 1]]
 
 
 def is_connected(g:Graph) -> bool:
