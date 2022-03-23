@@ -20,6 +20,7 @@ class Company(Agent):
                  company_id:int,
                  ccs:CCS,
                  ceoff:np.ndarray,
+                 offset:np.ndarray,
                  market_price:Callable[[np.ndarray, np.ndarray], np.ndarray],
                  market_price_grad:Callable[[np.ndarray, np.ndarray], np.ndarray],
                  product_cost:Callable[[np.ndarray], float],
@@ -37,6 +38,9 @@ class Company(Agent):
         coeff: np.ndarray,
             coefficient of the linear constraint,
             of shape (m, n)
+        offset: np.ndarray,
+            offset of the linear constraint,
+            of shape (m,)
         market_price: Callable[[np.ndarray, np.ndarray], np.ndarray],
             market price function,
             takes self.x and self.decision_profile(others) as input,
@@ -59,7 +63,8 @@ class Company(Agent):
         super().__init__(company_id,
                          ccs,
                          ceoff,
-                         np.zeros(ceoff.shape[0]),
+                         offset,
+                         2,  # constraint type 2: offset - ceoff @ x >= 0
                          None,
                          None,
                          step_sizes,

@@ -21,9 +21,14 @@ __all__ = [
 
 # section 7
 
+
+###############################################################################
 # setups
 num_companies, num_markets = 20, 7
+###############################################################################
 
+
+###############################################################################
 # Fig. 1
 market_company_connections = np.array([
     [1,1], [1,2], [1,5], [1,6], [1,10],
@@ -34,8 +39,10 @@ market_company_connections = np.array([
     [6,10], [6,14], [6,15], [6,17],
     [7,15], [7,16], [7,17], [7,18], [7,19], [7,20],
 ], dtype=int) - 1
+###############################################################################
 
 
+###############################################################################
 # interference edge set from Fig. 1
 interference_edge_set = []
 for i in range(num_companies-1):
@@ -79,8 +86,10 @@ interference_graph = Graph(num_vertices=num_companies, edge_set=interference_edg
 num_company_market_connection = np.array([
     (market_company_connections[:,1]==i).sum() for i in range(num_companies)
 ], dtype=int)  # the n_i's
+###############################################################################
 
 
+###############################################################################
 # The j-th column of A_i, denoted by [A_i]_{:j}, has only one element as
 # 1, all the other ones being 0; [A_i]_{:j} has its k-th element equal to
 # 1 if and only if player i delivers [x_i]_j production to M_k
@@ -100,8 +109,10 @@ for i in range(num_companies):
     company_parameters["offset"].append(offset)
 total_coeff = np.concatenate(company_parameters["ceoff"], axis=1)
 total_offset = sum(company_parameters["offset"])
+###############################################################################
 
 
+###############################################################################
 # multiplier edge set, decribed in section 7.2 as
 # "We adopt a ring graph arranged in alphabetical order
 # with additional edges (2, 15), (6, 13) as the multiplier graph"
@@ -112,14 +123,19 @@ multiplier_edge_set = np.array([
 # construct multiplier graph
 multiplier_graph = Graph(num_vertices=num_companies, edge_set=multiplier_edge_set)
 # multiplier_graph.random_weights()
+###############################################################################
 
 
+###############################################################################
 # Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
 market_capacities = RNG.uniform(0.5, 1, num_markets)
+###############################################################################
+
+
+###############################################################################
 # randomly drawn from [2, 4] and [0.5, 1]
 market_P = RNG.uniform(2, 4, num_markets)
 market_D = RNG.uniform(0.5, 1, num_markets)
-
 
 def market_price(company_id:int, decision:np.ndarray, profile:np.ndarray) -> float:
     """
@@ -137,10 +153,12 @@ def market_price_grad(company_id:int, decision:np.ndarray, profile:np.ndarray) -
     """
     mpg = -np.diag(market_D)
     return mpg
+###############################################################################
 
 
-# πi is randomly drawn from [1, 8],
-# and each component of bi is randomly drawn from [0.1, 0.6].
+###############################################################################
+# π_i is randomly drawn from [1, 8],
+# and each component of b_i is randomly drawn from [0.1, 0.6].
 product_cost_parameters = dict(
     pi = [RNG.integers(1, 8, endpoint=True) for _ in range(num_companies)],
     b = [RNG.uniform(0.1, 0.6, n) for n in num_company_market_connection],
@@ -158,6 +176,7 @@ def product_cost_grad(pi:int, b:np.ndarray, decision:np.ndarray,) -> np.ndarray:
     """
     decision = np.array(decision).flatten()
     return 2 * pi * decision + b
+###############################################################################
 
 
 companies = [
@@ -170,6 +189,7 @@ companies = [
             RNG.uniform(1, 1.5, num_company_market_connection[i]),
         ),
         ceoff=company_parameters["ceoff"][i],
+        offset=market_capacities,
         market_price=partial(market_price, i),
         market_price_grad=partial(market_price_grad, i),
         product_cost=partial(product_cost, product_cost_parameters["pi"][i], product_cost_parameters["b"][i]),

@@ -9,7 +9,10 @@ from scipy import sparse
 
 from utils import ReprMixin
 from graph import Graph
-from ccs import CCS, NonnegativeOrthant, EuclideanSpace
+from ccs import (
+    CCS, EuclideanSpace,
+    NonNegativeOrthant, NonPositiveOrthant,
+)
 
 
 __all__ = [
@@ -27,6 +30,7 @@ class Agent(ReprMixin):
                  ccs:CCS,
                  ceoff:np.ndarray,
                  offset:np.ndarray,
+                 constraint_type:int,
                  objective:Callable[[np.ndarray, np.ndarray], float],
                  objective_grad:Callable[[np.ndarray, np.ndarray], np.ndarray],
                  step_sizes:Sequence[float]=[0.1,0.1,0.1],
@@ -45,6 +49,10 @@ class Agent(ReprMixin):
         offset : np.ndarray,
             offset of the agent linear constraint,
             of shape (m,)
+        constraint_type : int,
+            type of the constraint,
+            1 for offset - ceoff @ x <= 0 (or equivalently coeff @ x >= offset),
+            2 for offset - ceoff @ x >= 0 (or equivalently coeff @ x <= offset),
         objective : Callable[[np.ndarray, np.ndarray], float],
             objective function,
             takes self.x and self.decision_profile(others) as input
@@ -55,6 +63,9 @@ class Agent(ReprMixin):
             namely tau, nu, and sigma, respectively
         alpha: float, optional,
             factor for the extrapolation of the variables (x, z, lambda)
+
+        NOTE: the linear constraint is assumed to be of the form
+            offset - ceoff @ x <= 0
         """
         self.agent_id = agent_id
         self.ccs = ccs
@@ -64,15 +75,20 @@ class Agent(ReprMixin):
         self._objective_grad = objective_grad
         self.tau, self.nu, self.sigma = step_sizes
         self.alpha = alpha
-        self._nno = NonnegativeOrthant(self.b.shape[0])
+        if constraint_type == 1:
+            self._multiplier_orthant = NonNegativeOrthant(self.b.shape[0])
+        elif constraint_type == 2:
+            self._multiplier_orthant = NonPositiveOrthant(self.b.shape[0])
+        else:
+            raise ValueError(f"constraint_type must be 1 or 2, but got {constraint_type}")
         self._es = EuclideanSpace(self.b.shape[0])
 
         assert self.dim == self.A.shape[1]  # n_i
         assert self.A.shape[0] == self.b.shape[0]  # m
 
         self._decision = self.ccs.random_point()  # x_i
-        # self._multiplier = self._nno.random_point()  # lambda_i
-        self._multiplier = np.zeros((self._nno.dim,))
+        # self._multiplier = self._multiplier_orthant.random_point()  # lambda_i
+        self._multiplier = np.zeros((self._multiplier_orthant.dim,))
         # self._aux_var = self._es.random_point()  # z_i
         self._aux_var = np.zeros((self._es.dim,))
         self._prev_decision = self._decision.copy()
@@ -119,7 +135,7 @@ class Agent(ReprMixin):
                 other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
         ]
         W = multiplier_graph.adj_mat
-        self._multiplier = self._nno.projection(
+        self._multiplier = self._multiplier_orthant.projection(
             self.extrapolated_multiplier - self.sigma * (
                 np.matmul(self.A, 2*self.x - self._prev_decision) - self.b + \
                 sum([
