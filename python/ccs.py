@@ -15,7 +15,8 @@ from utils import ReprMixin, RNG
 __all__ = [
     "CCS",
     "EuclideanSpace",
-    "NonnegativeOrthant",
+    "NonNegativeOrthant",
+    "NonPositiveOrthant",
     "Polyhedron",
     "HyperPlane",
     "HalfSpace",
@@ -119,10 +120,10 @@ class EuclideanSpace(CCS):
         return RNG.uniform(bounds[0], bounds[1], self.embedded_dim)
 
 
-class NonnegativeOrthant(CCS):
+class NonNegativeOrthant(CCS):
     """
     """
-    __name__ = "NonnegativeOrthant"
+    __name__ = "NonNegativeOrthant"
 
     def __init__(self, dim:int) -> NoReturn:
         """
@@ -163,6 +164,52 @@ class NonnegativeOrthant(CCS):
         """
         assert bound > 0
         return RNG.uniform(0, bound, self.embedded_dim)
+
+
+class NonPositiveOrthant(CCS):
+    """
+    """
+    __name__ = "NonPositiveOrthant"
+
+    def __init__(self, dim:int) -> NoReturn:
+        """
+        """
+        self._dim = dim
+
+    @property
+    def dim(self) -> int:
+        return self._dim
+
+    @property
+    def embedded_dim(self) -> int:
+        return self.dim
+
+    def _check_validity(self, point:np.ndarray) -> NoReturn:
+        """
+        """
+        assert point.shape[0] == self.dim
+
+    def isin(self, point:np.ndarray) -> bool:
+        """
+        """
+        self._check_validity(point)
+        return np.all(point <= 0)
+
+    def projection(self, point:np.ndarray) -> np.ndarray:
+        """
+        """
+        if self.isin(point):
+            return point
+        pos_inds = np.where(point > 0)[0]
+        proj_point = point.copy()
+        proj_point[pos_inds] = 0
+        return proj_point
+
+    def random_point(self, bound:Real=-10) -> np.ndarray:
+        """
+        """
+        assert bound < 0
+        return RNG.uniform(bound, 0, self.embedded_dim)
 
 class Polyhedron(CCS):
     """
