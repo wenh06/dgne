@@ -17,14 +17,16 @@ __all__ = [
 
 
 class BipartiteGraph(nx.Graph):
-    """
-    """
-    def __init__(self,
-                 incoming_graph_data:Optional[Any]=None,
-                 row_nodes:Optional[Sequence[str]]=None,
-                 col_nodes:Optional[Sequence[str]]=None,
-                 edges:Optional[Sequence[Tuple[str,str]]]=None) -> NoReturn:
-        """ finished, checked,
+    """ """
+
+    def __init__(
+        self,
+        incoming_graph_data: Optional[Any] = None,
+        row_nodes: Optional[Sequence[str]] = None,
+        col_nodes: Optional[Sequence[str]] = None,
+        edges: Optional[Sequence[Tuple[str, str]]] = None,
+    ) -> NoReturn:
+        """finished, checked,
 
         Parameters:
         -----------
@@ -45,92 +47,79 @@ class BipartiteGraph(nx.Graph):
             self.add_edges_from(edges)
         assert NXA.bipartite.is_bipartite(self)
         if not self.empty:
-            assert all([d["bipartite"] in ["row", "col"] for _, d in self.nodes(data=True)])
+            assert all(
+                [d["bipartite"] in ["row", "col"] for _, d in self.nodes(data=True)]
+            )
 
     @property
     def row_nodes(self) -> list:
-        """
-        """
-        rn = [n for n, d in self.nodes(data=True) if d["bipartite"]=="row"]
+        """ """
+        rn = [n for n, d in self.nodes(data=True) if d["bipartite"] == "row"]
         return rn
-    
+
     @property
     def col_nodes(self) -> list:
-        """
-        """
-        cn = [n for n, d in self.nodes(data=True) if d["bipartite"]=="col"]
+        """ """
+        cn = [n for n, d in self.nodes(data=True) if d["bipartite"] == "col"]
         return cn
 
     @property
     def n_edges(self) -> int:
-        """
-        """
+        """ """
         ne = len(self.edges)
         return ne
-    
+
     @property
     def n_nonzeros(self) -> int:
-        """
-        """
+        """ """
         return self.n_edges
 
     @property
     def n_connected_components(self) -> int:
-        """
-        """
+        """ """
         ncc = len(list(NXA.components.connected_components(self)))
         return ncc
 
     @property
     def connected_components(self) -> list:
-        """
-        """
-        cc = [
-            self.subgraph(item) \
-                for item in NXA.components.connected_components(self)
-        ]
+        """ """
+        cc = [self.subgraph(item) for item in NXA.components.connected_components(self)]
         return cc
 
     @property
     def sorted_connected_components(self) -> list:
-        """
-        """
+        """ """
         cc = self.connected_components
         cc = sorted(cc, key=lambda item: item.size, reverse=True)
         return cc
 
     @property
     def shape(self) -> Tuple[int, int]:
-        """
-        """
+        """ """
         sp = (len(self.row_nodes), len(self.col_nodes))
         return sp
 
     @property
     def size(self) -> int:
-        """
-        """
+        """ """
         shape = self.shape
         sz = shape[0] * shape[1]
         return sz
 
     @property
     def empty(self) -> bool:
-        """
-        """
-        return (len(self.nodes) == 0)
+        """ """
+        return len(self.nodes) == 0
 
     @property
     def density(self) -> float:
-        """
-        """
+        """ """
         d = self.n_nonzeros / self.size
         return d
 
     @property
     def density_strict(self) -> float:
-        """
-        """
+        """ """
         cc = self.connected_components
         cc_areas = [item.size for item in cc]
         cc_n_edges = [item.n_nonzeros for item in cc]
@@ -138,10 +127,12 @@ class BipartiteGraph(nx.Graph):
         return d
 
     @staticmethod
-    def from_array(arr:Union[Sequence, np.ndarray],
-                   row_names:Optional[Sequence[str]]=None,
-                   col_names:Optional[Sequence[str]]=None) -> "BipartiteGraph":
-        """ finished, checked,
+    def from_array(
+        arr: Union[Sequence, np.ndarray],
+        row_names: Optional[Sequence[str]] = None,
+        col_names: Optional[Sequence[str]] = None,
+    ) -> "BipartiteGraph":
+        """finished, checked,
 
         Parameters:
         -----------
@@ -159,20 +150,20 @@ class BipartiteGraph(nx.Graph):
         rn = [f"row_{idx}" for idx in range(nrows)] if row_names is None else row_names
         cn = [f"col_{idx}" for idx in range(ncols)] if col_names is None else col_names
         assert nrows == len(rn) and ncols == len(cn)
-        nz_row, nz_col = np.where(_arr!=0)
+        nz_row, nz_col = np.where(_arr != 0)
         nz_row = [rn[idx] for idx in nz_row]
         nz_col = [cn[idx] for idx in nz_col]
 
         bg = BipartiteGraph(
             row_nodes=sorted(list(set(nz_row))),
             col_nodes=sorted(list(set(nz_col))),
-            edges=[(r, c) for r, c in zip(nz_row, nz_col)]
+            edges=[(r, c) for r, c in zip(nz_row, nz_col)],
         )
         return bg
 
     @staticmethod
-    def from_dataframe(df:pd.DataFrame) -> "BipartiteGraph":
-        """ finished, checked,
+    def from_dataframe(df: pd.DataFrame) -> "BipartiteGraph":
+        """finished, checked,
 
         Parameters:
         -----------
@@ -193,8 +184,8 @@ class BipartiteGraph(nx.Graph):
         return bg
 
     @staticmethod
-    def from_sparse(ssm:Union[spmatrix,str]) -> "BipartiteGraph":
-        """ finished, checked,
+    def from_sparse(ssm: Union[spmatrix, str]) -> "BipartiteGraph":
+        """finished, checked,
 
         Parameters:
         -----------
@@ -216,12 +207,14 @@ class BipartiteGraph(nx.Graph):
         bg = BipartiteGraph(
             row_nodes=sorted(list(set(nz_row))),
             col_nodes=sorted(list(set(nz_col))),
-            edges=[(r, c) for r, c in zip(nz_row, nz_col)]
+            edges=[(r, c) for r, c in zip(nz_row, nz_col)],
         )
         return bg
 
-    def to_dataframe(self, rows:Optional[Sequence[str]]=None, cols:Optional[Sequence[str]]=None) -> pd.DataFrame:
-        """ finished, checked,
+    def to_dataframe(
+        self, rows: Optional[Sequence[str]] = None, cols: Optional[Sequence[str]] = None
+    ) -> pd.DataFrame:
+        """finished, checked,
 
         Parameters:
         -----------

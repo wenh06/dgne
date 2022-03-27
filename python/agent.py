@@ -10,8 +10,10 @@ from scipy import sparse
 from utils import ReprMixin
 from graph import Graph
 from ccs import (
-    CCS, EuclideanSpace,
-    NonNegativeOrthant, NonPositiveOrthant,
+    CCS,
+    EuclideanSpace,
+    NonNegativeOrthant,
+    NonPositiveOrthant,
 )
 
 
@@ -21,20 +23,22 @@ __all__ = [
 
 
 class Agent(ReprMixin):
-    """
-    """
+    """ """
+
     __name__ = "Agent"
 
-    def __init__(self,
-                 agent_id:int,
-                 ccs:CCS,
-                 ceoff:np.ndarray,
-                 offset:np.ndarray,
-                 constraint_type:int,
-                 objective:Callable[[np.ndarray, np.ndarray], float],
-                 objective_grad:Callable[[np.ndarray, np.ndarray], np.ndarray],
-                 step_sizes:Sequence[float]=[0.1,0.1,0.1],
-                 alpha:Optional[float]=None) -> NoReturn:
+    def __init__(
+        self,
+        agent_id: int,
+        ccs: CCS,
+        ceoff: np.ndarray,
+        offset: np.ndarray,
+        constraint_type: int,
+        objective: Callable[[np.ndarray, np.ndarray], float],
+        objective_grad: Callable[[np.ndarray, np.ndarray], np.ndarray],
+        step_sizes: Sequence[float] = [0.1, 0.1, 0.1],
+        alpha: Optional[float] = None,
+    ) -> NoReturn:
         """
 
         Parameters
@@ -80,7 +84,9 @@ class Agent(ReprMixin):
         elif constraint_type == 2:
             self._multiplier_orthant = NonPositiveOrthant(self.b.shape[0])
         else:
-            raise ValueError(f"constraint_type must be 1 or 2, but got {constraint_type}")
+            raise ValueError(
+                f"constraint_type must be 1 or 2, but got {constraint_type}"
+            )
         self._es = EuclideanSpace(self.b.shape[0])
 
         assert self.dim == self.A.shape[1]  # n_i
@@ -97,52 +103,75 @@ class Agent(ReprMixin):
         if self.alpha is not None:
             self._prev_multiplier = self._multiplier.copy()
 
-    def update(self,
-               others:List["Agent"],
-               interference_graph:Graph,
-               multiplier_graph:Graph,) -> NoReturn:
-        """
-        """
+    def update(
+        self,
+        others: List["Agent"],
+        interference_graph: Graph,
+        multiplier_graph: Graph,
+    ) -> NoReturn:
+        """ """
         self._prev_decision = self.x.copy()
         self._prev_aux_var = self.z.copy()
         interference_inds = [
-            i for i, other in enumerate(others) if \
-                other.agent_id in interference_graph.get_neighbors(self.agent_id)
+            i
+            for i, other in enumerate(others)
+            if other.agent_id in interference_graph.get_neighbors(self.agent_id)
         ]
         multiplier_inds = [
-            i for i, other in enumerate(others) if \
-                other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
+            i
+            for i, other in enumerate(others)
+            if other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
         ]
         self._decision = self.ccs.projection(
-            self.extrapolated_decision - self.tau * self._objective_grad(
-                self.x, self.decision_profile(others, True)
-            ) - np.matmul(self.A.T, self.lam)
+            self.extrapolated_decision
+            - self.tau
+            * self._objective_grad(self.x, self.decision_profile(others, True))
+            - np.matmul(self.A.T, self.lam)
         )
 
         W = multiplier_graph.adj_mat
-        self._aux_var = self.extrapolated_aux_var + self.nu * sum([
-            W[self.agent_id, others[j].agent_id] * \
-                (self.lam - others[j].lam) for j in multiplier_inds
-        ])
+        self._aux_var = self.extrapolated_aux_var + self.nu * sum(
+            [
+                W[self.agent_id, others[j].agent_id] * (self.lam - others[j].lam)
+                for j in multiplier_inds
+            ]
+        )
 
-    def dual_update(self,
-                    others:List["Agent"],
-                    multiplier_graph:Graph,) -> NoReturn:
-        """
-        """
+    def dual_update(
+        self,
+        others: List["Agent"],
+        multiplier_graph: Graph,
+    ) -> NoReturn:
+        """ """
         multiplier_inds = [
-            i for i, other in enumerate(others) if \
-                other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
+            i
+            for i, other in enumerate(others)
+            if other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
         ]
         W = multiplier_graph.adj_mat
         self._multiplier = self._multiplier_orthant.projection(
-            self.extrapolated_multiplier - self.sigma * (
-                np.matmul(self.A, 2*self.x - self._prev_decision) - self.b + \
-                sum([
-                    W[self.agent_id, others[j].agent_id] * (2*(self.z - others[j].z) - (self._prev_aux_var - others[j]._prev_aux_var)) \
+            self.extrapolated_multiplier
+            - self.sigma
+            * (
+                np.matmul(self.A, 2 * self.x - self._prev_decision)
+                - self.b
+                + sum(
+                    [
+                        W[self.agent_id, others[j].agent_id]
+                        * (
+                            2 * (self.z - others[j].z)
+                            - (self._prev_aux_var - others[j]._prev_aux_var)
+                        )
                         for j in multiplier_inds
-                ]) + \
-                sum([W[self.agent_id, others[j].agent_id] * (self.lam - others[j].lam) for j in multiplier_inds])
+                    ]
+                )
+                + sum(
+                    [
+                        W[self.agent_id, others[j].agent_id]
+                        * (self.lam - others[j].lam)
+                        for j in multiplier_inds
+                    ]
+                )
             )
         )
 
@@ -200,21 +229,29 @@ class Agent(ReprMixin):
             return self.lam
         return self.lam + self.alpha * (self.lam - self._prev_multiplier)
 
-    def degree(self, adj_mat:np.ndarray) -> Real:
-        """
-        """
+    def degree(self, adj_mat: np.ndarray) -> Real:
+        """ """
         return adj_mat[self.agent_id, :].sum()
 
-    def decision_profile(self, others:List["Agent"], except_self:bool=False) -> np.ndarray:
-        """
-        """
+    def decision_profile(
+        self, others: List["Agent"], except_self: bool = False
+    ) -> np.ndarray:
+        """ """
         agent_ids = [other.agent_id for other in others]
         inds = np.argsort(agent_ids)
         dp = np.concatenate([others[i].decision for i in inds])
         if not except_self:
-            insert_pos = sum([other.dim for other in others if other.agent_id < self.agent_id])
+            insert_pos = sum(
+                [other.dim for other in others if other.agent_id < self.agent_id]
+            )
             dp = np.insert(dp, insert_pos, self.decision, axis=0)
         return dp
 
     def extra_repr_keys(self) -> List[str]:
-        return ["agent_id", "dim", "tau", "nu", "sigma",]
+        return [
+            "agent_id",
+            "dim",
+            "tau",
+            "nu",
+            "sigma",
+        ]
