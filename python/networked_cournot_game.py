@@ -5,6 +5,7 @@ Networked Cournot Game
 from typing import NoReturn, Sequence, Callable, Optional, List
 
 import numpy as np
+
 try:
     from tqdm.auto import tqdm
 except ImportError:
@@ -168,7 +169,9 @@ class NetworkedCournotGame(ReprMixin):
             number of steps to run the simulation
 
         """
-        with tqdm(range(num_steps), total=num_steps, desc="Running simulation", unit="step") as pbar:
+        with tqdm(
+            range(num_steps), total=num_steps, desc="Running simulation", unit="step"
+        ) as pbar:
             for i in pbar:
                 for company in self.companies:
                     # update
@@ -185,7 +188,10 @@ class NetworkedCournotGame(ReprMixin):
 
     def extra_repr_keys(self) -> List[str]:
         """ """
-        return ["num_companies", "num_markets",]
+        return [
+            "num_companies",
+            "num_markets",
+        ]
 
     # @property
     # def market_price(self) -> Callable[[np.ndarray], np.ndarray]:
