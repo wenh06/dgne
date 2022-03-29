@@ -48,11 +48,17 @@ _market_company_connections = (
 # fmt: on
 ###############################################################################
 
+###############################################################################
+# Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
+_market_capacities = RNG.uniform(0.5, 1, _num_markets)
+###############################################################################
+
 
 def setup_simulation(
     num_companies: int = _num_companies,
     num_markets: int = _num_markets,
     market_company_connections: np.ndarray = _market_company_connections,
+    market_capacities: np.ndarray = _market_capacities,
     step_sizes: Sequence[float] = (0.03, 0.2, 0.03),
     **kwargs: dict,
 ) -> Tuple[List[Company], Graph, Graph]:
@@ -65,22 +71,29 @@ def setup_simulation(
     num_markets: int,
         number of markets
     market_company_connections: np.ndarray,
-        market-company connection matrix, of shape (n, 2),
+        market-company connection matrix,
+        of shape (num_connections, 2),
         each element is a pair of market and company indices
+    market_capacities: np.ndarray,
+        market capacities,
+        of shape (num_markets,),
     step_sizes: sequence of float,
         3-tuples of step sizes for x, z, and lam, respectively,
         namely tau, nu, and sigma, respectively
 
     Returns
     -------
-    companies: List[Company],
-        list of `Company` instances
-    multiplier_graph: Graph,
-        multiplier graph
-    interference_graph: Graph,
-        interference graph
+    networked_cournot_game: NetworkedCournotGame,
+        an instance of NetworkedCournotGame
 
     """
+
+    # assertions
+    assert market_capacities.shape == (num_markets,)
+    assert (
+        market_company_connections.ndim == 2
+        and market_company_connections.shape[1] == 2
+    )
 
     ###############################################################################
     # interference edge set from Fig. 1
@@ -263,7 +276,14 @@ def setup_simulation(
         for i in range(num_companies)
     ]
 
-    return companies, multiplier_graph, interference_graph
+    networked_cournot_game = NetworkedCournotGame(
+        companies=companies,
+        multiplier_graph=multiplier_graph,
+        interference_graph=interference_graph,
+        market_capacities=market_capacities,
+    )
+
+    return networked_cournot_game
 
 
 def run_simulation() -> NoReturn:
