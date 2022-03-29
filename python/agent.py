@@ -62,7 +62,7 @@ class Agent(ReprMixin):
             takes self.x and self.decision_profile(others) as input
         objective_grad : Callable[[np.ndarray, np.ndarray], np.ndarray],
             gradient of the objective function
-        step_sizes : Sequence[float],
+        step_sizes : sequence of float,
             3-tuples of step sizes for x, z, and lam, respectively,
             namely tau, nu, and sigma, respectively
         alpha: float, optional,
