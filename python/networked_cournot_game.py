@@ -2,12 +2,17 @@
 Networked Cournot Game
 """
 
-from typing import NoReturn, Sequence, Callable, Optional
+from typing import NoReturn, Sequence, Callable, Optional, List
 
 import numpy as np
+try:
+    from tqdm.auto import tqdm
+except ImportError:
+    from tqdm import tqdm
 
 from agent import Agent
 from ccs import CCS
+from graph import Graph
 from utils import ReprMixin
 
 
@@ -93,7 +98,7 @@ class Company(Agent):
             num_markets = self.A.shape[0]
             g = np.zeros(self.A.shape[1])
             for k in range(self.dim):
-                g[k] = self._product_cost_grad(decision) - sum(
+                g[k] = self._product_cost_grad(decision)[k] - sum(
                     [
                         np.dot(
                             self._market_price_grad(decision, profile)[t], self.A[:, k]
@@ -119,18 +124,74 @@ class NetworkedCournotGame(ReprMixin):
 
     def __init__(
         self,
-        companies: Sequence[Agent],
-        max_capacities: np.ndarray,
+        companies: Sequence[Company],
+        multiplier_graph: Graph,
+        interference_graph: Graph,
+        market_capacities: np.ndarray,
     ) -> NoReturn:
         """ """
         self._companies = companies
-        self._max_capacities = max_capacities
+        self._market_capacities = market_capacities
+        self._multiplier_graph = multiplier_graph
+        self._interference_graph = interference_graph
+
+    @property
+    def num_companies(self) -> int:
+        return len(self._companies)
+
+    @property
+    def num_markets(self) -> int:
+        return self.market_capacities.shape[0]
+
+    @property
+    def companies(self) -> Sequence[Company]:
+        return self._companies
+
+    @property
+    def market_capacities(self) -> np.ndarray:
+        return self._market_capacities
+
+    @property
+    def multiplier_graph(self) -> Graph:
+        return self._multiplier_graph
+
+    @property
+    def interference_graph(self) -> Graph:
+        return self._interference_graph
+
+    def run_simulation(self, num_steps: int) -> NoReturn:
+        """
+
+        Parameters
+        ----------
+        num_steps: int,
+            number of steps to run the simulation
+
+        """
+        with tqdm(range(num_steps), total=num_steps, desc="Running simulation", unit="step") as pbar:
+            for i in pbar:
+                for company in self.companies:
+                    # update
+                    company.update(
+                        [c for c in self.companies if c.agent_id != company.agent_id],
+                        self.interference_graph,
+                        self.multiplier_graph,
+                    )
+                    # dual update
+                    company.dual_update(
+                        [c for c in self.companies if c.agent_id != company.agent_id],
+                        self.multiplier_graph,
+                    )
+
+    def extra_repr_keys(self) -> List[str]:
+        """ """
+        return ["num_companies", "num_markets",]
 
     # @property
     # def market_price(self) -> Callable[[np.ndarray], np.ndarray]:
     #     """
     #     """
-    #     return self._companies._market_price
+    #     return self._companies[0]._market_price.func
 
 
 def linear_inverse_demand(
