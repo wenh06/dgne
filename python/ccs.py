@@ -9,7 +9,7 @@ from numbers import Real
 import numpy as np
 from scipy.spatial import ConvexHull as _ConvexHull
 
-from utils import ReprMixin, RNG
+from utils import ReprMixin, RNG, add_docstring
 
 
 __all__ = [
@@ -28,6 +28,31 @@ __all__ = [
     "Simplex",
     "ConvexHull",
 ]
+
+
+_PROJECTION_DOC = """
+    Parameters
+    ----------
+    point: np.ndarray,
+        the point to be projected onto the {space_name}
+
+    Returns
+    -------
+    np.ndarray,
+        the projected point
+    """
+
+_ISIN_DOC = """
+    Parameters
+    ----------
+    point: np.ndarray,
+        the point to be checked whether it is in the {space_name}
+
+    Returns
+    -------
+    bool,
+        whether the point is in the {space_name}
+    """
 
 
 class CCS(ReprMixin, ABC):
@@ -69,9 +94,7 @@ class CCS(ReprMixin, ABC):
 
     def extra_repr_keys(self) -> List[str]:
         """ """
-        return [
-            "dim",
-        ]
+        return ["dim", "embedded_dim"]
 
 
 class EuclideanSpace(CCS):
@@ -95,11 +118,13 @@ class EuclideanSpace(CCS):
         """ """
         assert point.shape[0] == self.dim
 
+    @add_docstring(_ISIN_DOC.format(space_name="EuclideanSpace"))
     def isin(self, point: np.ndarray) -> bool:
         """ """
         self._check_validity(point)
         return True
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="EuclideanSpace"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         self._check_validity(point)
@@ -114,12 +139,24 @@ class EuclideanSpace(CCS):
 
 
 class NonNegativeOrthant(CCS):
-    """ """
+    """
+
+    the non-negative orthant is the set of points in R^n such that
+    for all i, x_i >= 0
+
+    """
 
     __name__ = "NonNegativeOrthant"
 
     def __init__(self, dim: int) -> NoReturn:
-        """ """
+        """
+
+        Parameters
+        ----------
+        dim : int
+            dimension of the space
+
+        """
         self._dim = dim
 
     @property
@@ -134,11 +171,13 @@ class NonNegativeOrthant(CCS):
         """ """
         assert point.shape[0] == self.dim
 
+    @add_docstring(_ISIN_DOC.format(space_name="NonNegativeOrthant"))
     def isin(self, point: np.ndarray) -> bool:
         """ """
         self._check_validity(point)
         return np.all(point >= 0)
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="NonNegativeOrthant"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         if self.isin(point):
@@ -155,12 +194,24 @@ class NonNegativeOrthant(CCS):
 
 
 class NonPositiveOrthant(CCS):
-    """ """
+    """
+
+    the non-positive orthant is the set of points in R^n such that
+    for all i, x_i <= 0
+
+    """
 
     __name__ = "NonPositiveOrthant"
 
     def __init__(self, dim: int) -> NoReturn:
-        """ """
+        """
+
+        Parameters
+        ----------
+        dim : int
+            dimension of the space
+
+        """
         self._dim = dim
 
     @property
@@ -175,11 +226,13 @@ class NonPositiveOrthant(CCS):
         """ """
         assert point.shape[0] == self.dim
 
+    @add_docstring(_ISIN_DOC.format(space_name="NonPositiveOrthant"))
     def isin(self, point: np.ndarray) -> bool:
         """ """
         self._check_validity(point)
         return np.all(point <= 0)
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="NonPositiveOrthant"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         if self.isin(point):
@@ -196,7 +249,12 @@ class NonPositiveOrthant(CCS):
 
 
 class Polyhedron(CCS):
-    """ """
+    """
+
+    polyhedron is the set of points in R^n defined by a set of
+    inequalities and a set of equalities
+
+    """
 
     __name__ = "Polyhedron"
 
@@ -206,7 +264,22 @@ class Polyhedron(CCS):
         equalities: Optional[np.ndarray] = None,
     ) -> NoReturn:
         """
-        Example:
+
+        Parameters
+        ----------
+        inequalities : np.ndarray, optional,
+            of shape (n, m + 1), where n is the number of inequalities,
+            inequalities are of the form Ax <= b,
+            where `A = inequalities[..., :-1]` is a matrix of size (n, m),
+            `b inequalities[..., -1]` is a vector of size (n,)
+        equalities : np.ndarray, optional,
+            of shape (n, m + 1), where n is the number of equalities,
+            equalities are of the form Ax = b,
+            where `A = equalities[..., :-1]` is a matrix of size (n, m),
+            `b equalities[..., -1]` is a vector of size (n,)
+
+        Example
+        -------
         >>> inequalities = np.array([[0,-1,0], [0,1,1], [-1,0,0], [1,0,1]])
         >>> ph = Polyhedron(inequalities)
         """
@@ -243,6 +316,7 @@ class Polyhedron(CCS):
         """ """
         assert point.shape[0] == self._inequalities.shape[1] - 1
 
+    @add_docstring(_ISIN_DOC.format(space_name="Polyhedron"))
     def isin(self, point: np.ndarray) -> bool:
         """ """
         self._check_validity(point)
@@ -254,16 +328,35 @@ class Polyhedron(CCS):
 
 
 class HyperPlane(Polyhedron):
-    """ """
+    r"""
+
+    hyperplane is the set of points in R^n defined by one equality,
+    or equivalently by a normal vector and an offset:
+
+        .. math::
+            \langle x, n \rangle = c
+
+    """
 
     __name__ = "HyperPlane"
 
     def __init__(self, normal_vec: np.ndarray, offset: float) -> NoReturn:
-        """ """
+        """
+
+        Parameters
+        ----------
+        normal_vec : np.ndarray,
+            the normal vector that is orthogonal to the hyperplane,
+            of shape (n,)
+        offset : float,
+            the offset of the hyperplane
+
+        """
         self._normal_vec = np.array(normal_vec)
         self._offset = offset
         super().__init__(None, np.append(self._normal_vec, self._offset)[np.newaxis, :])
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="HyperPlane"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         self._check_validity(point)
@@ -281,17 +374,36 @@ class HyperPlane(Polyhedron):
 
 
 class HalfSpace(Polyhedron):
-    """ """
+    """
+
+    halfspace is the set of points in R^n defined by one inequality,
+    or equivalently by a normal vector and an offset:
+
+        .. math::
+            \langle x, n \rangle \leqslant c
+
+    """
 
     __name__ = "HalfSpace"
 
     def __init__(self, normal_vec: np.ndarray, offset: float) -> NoReturn:
-        """ """
+        """
+
+        Parameters
+        ----------
+        normal_vec : np.ndarray,
+            the normal vector that is orthogonal and outwards the half space,
+            of shape (n,)
+        offset : float,
+            the offset of the half space
+
+        """
         self._normal_vec = np.array(normal_vec)
         self._offset = offset
         super().__init__(np.append(self._normal_vec, self._offset)[np.newaxis, :], None)
         self._hyperplane = HyperPlane(self._normal_vec, self._offset)
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="HalfSpace"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         if self.isin(point):
@@ -310,8 +422,27 @@ class Rectangle(Polyhedron):
 
     def __init__(self, lower_bounds: np.ndarray, upper_bounds: np.ndarray) -> NoReturn:
         """
-        Example:
+
+        Rectangle is defined by the following inequalities:
+        `lower_bounds <= x <= upper_bounds`
+
+        Parameters
+        ----------
+        lower_bounds : np.ndarray,
+            of shape (m,)
+        upper_bounds : np.ndarray,
+            of shape (m,)
+
+        Examples
+        --------
         >>> rect = Rectangle(np.zeros(10), np.ones(10))
+        Rectangle(
+            lower_bounds = array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]),
+            upper_bounds = array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]),
+            dim          = 10,
+            embedded_dim = 10
+        )
+
         """
         self._lower_bounds = np.array(lower_bounds)
         self._upper_bounds = np.array(upper_bounds)
@@ -331,6 +462,7 @@ class Rectangle(Polyhedron):
         )
         super().__init__(inequlities, None)
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="Rectangle"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         return np.array(point).clip(self._lower_bounds, self._upper_bounds)
@@ -360,7 +492,18 @@ class LpBall(CCS):
     __name__ = "LpBall"
 
     def __init__(self, p: Real, center: np.ndarray, radius: float) -> NoReturn:
-        """ """
+        """
+
+        Parameters
+        ----------
+        p : Real or np.inf,
+            Lp norm to define the ball
+        center : np.ndarray,
+            center of the L2 ball, of shape (m,)
+        radius : float,
+            radius of the L2 ball
+
+        """
         assert p >= 1, "p must be >= 1 to be convex"
         self.p = p
         self.center = np.array(center)
@@ -378,6 +521,7 @@ class LpBall(CCS):
         """ """
         assert point.shape[0] == self.dim
 
+    @add_docstring(_ISIN_DOC.format(space_name="LpBall"))
     def isin(self, point: np.ndarray) -> bool:
         """ """
         self._check_validity(point)
@@ -405,9 +549,30 @@ class L2Ball(LpBall):
     __name__ = "L2Ball"
 
     def __init__(self, center: np.ndarray, radius: float) -> NoReturn:
-        """ """
+        """
+
+        Parameters
+        ----------
+        center : np.ndarray,
+            center of the L2 ball, of shape (m,)
+        radius : float,
+            radius of the L2 ball
+
+        Examples
+        --------
+        >>> ball = L2Ball(np.ones(10), 2)
+        L2Ball(
+            p            = 2,
+            center       = array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]),
+            radius       = 2,
+            dim          = 10,
+            embedded_dim = 10
+        )
+
+        """
         super().__init__(p=2, center=center, radius=radius)
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="L2Ball"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         if self.isin(point):
@@ -427,23 +592,51 @@ class L1Ball(LpBall):
         """ """
         super().__init__(p=1, center=center, radius=radius)
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="L1Ball"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         raise NotImplementedError
 
 
-class LInfBall(LpBall):
+class LInfBall(LpBall, Rectangle):
     """ """
 
     __name__ = "LInfBall"
 
     def __init__(self, center: np.ndarray, radius: float) -> NoReturn:
-        """ """
-        super().__init__(p=np.inf, center=center, radius=radius)
+        """
 
+        Parameters
+        ----------
+        center : np.ndarray,
+            center of the L-inf ball, of shape (m,)
+        radius : float,
+            radius of the L-inf ball
+
+        Examples
+        --------
+        >>> ball = LInfBall(np.ones(10), 2)
+        LInfBall(
+            p            = inf,
+            center       = array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]),
+            radius       = 2,
+            dim          = 10,
+            embedded_dim = 10,
+            lower_bounds = array([3., 3., 3., 3., 3., 3., 3., 3., 3., 3.]),
+            upper_bounds = array([-1., -1., -1., -1., -1., -1., -1., -1., -1., -1.])
+        )
+
+        """
+        dim = center.shape[0]
+        upper_bounds = center + radius
+        lower_bounds = center - radius
+        LpBall.__init__(self, p=np.inf, center=center, radius=radius)
+        Rectangle.__init__(self, upper_bounds, lower_bounds)
+
+    @add_docstring(_PROJECTION_DOC.format(space_name="LInfBall"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
-        raise NotImplementedError
+        return Rectangle.projection(self, point)
 
 
 class Simplex(CCS):
@@ -467,11 +660,13 @@ class Simplex(CCS):
         """ """
         assert point.shape[0] == self.dim
 
+    @add_docstring(_ISIN_DOC.format(space_name="Simplex"))
     def isin(self, point: np.ndarray) -> bool:
         """ """
         self._check_validity(point)
         return point.sum() <= 1
 
+    @add_docstring(_PROJECTION_DOC.format(space_name="EuclideanSpace"))
     def projection(self, point: np.ndarray) -> np.ndarray:
         """ """
         raise NotImplementedError
@@ -507,6 +702,7 @@ class ConvexHull(_ConvexHull, CCS):
         """ """
         assert point.shape[0] == self.dim
 
+    @add_docstring(_ISIN_DOC.format(space_name="EuclideanSpace"))
     def isin(self, point: np.ndarray) -> bool:
         """ """
         raise NotImplementedError
