@@ -10,12 +10,29 @@ import numpy as np
 __all__ = [
     "SEED",
     "RNG",
+    "set_seed",
     "ReprMixin",
 ]
 
 
 SEED = 42
 RNG = np.random.default_rng(seed=SEED)
+
+
+def set_seed(seed: int) -> NoReturn:
+    """
+    set the seed of the random number generator
+
+    Parameters
+    ----------
+    seed: int,
+        the seed to be set
+
+    """
+
+    global RNG, SEED
+    SEED = seed
+    RNG = np.random.default_rng(seed=seed)
 
 
 def default_class_repr(c: object, align: str = "center", depth: int = 1) -> str:
