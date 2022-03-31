@@ -1,0 +1,24 @@
+
+Computation of the gradient of the function in equation (36) in \citep{Yi_2019}
+
+Let
+$$g(x_i) = f_i(x_i, \mathbf{x}_{-i}) = c_i(x_i) - (P(Ax))^T A_ix_i,$$
+with $1 \leqslant i \leqslant N$, $x_i \in \mathbb{R}^{n_i}$, $c_i: \mathbb{R}^{n_i} \supset \Omega_i \to \mathbb{R}$ is local production cost function, $P: \mathbb{R}^m \to \mathbb{R}^m$ maps the total supply of each market to its corresponding price, $A = [A_1, \ldots, A_N]$, $x = \operatorname{col}(x_1, \ldots, x_N)$, $Ax = \sum\limits_{1 \leqslant j \leqslant N} A_ix_i$. Then
+
+\begingroup
+\allowdisplaybreaks
+\begin{align*}
+& \operatorname{grad} g(x_i) = \nabla_{x_i} f_i(x_i, \mathbf{x}_{-i}) = \operatorname{grad} c_i(x_i) - \left( \dfrac{\partial \left( (P(Ax))^T A_ix_i \right)}{\partial (x_i)_k} \right)_{k=1}^{n_i} \\
+= & \operatorname{grad} c_i(x_i) - \left( \dfrac{\partial \left( \sum\limits_{1\leqslant t \leqslant m} P_t(Ax) (A_ix_i)_t \right)}{\partial (x_i)_k} \right)_{k=1}^{n_i} \\
+= & \operatorname{grad} c_i(x_i) - \left( \sum\limits_{1\leqslant t \leqslant m} \left[ \dfrac{\partial P_t \left( \sum\limits_j A_jx_j \right)}{\partial (x_i)_k} (A_ix_i)_t + P_t \left( \sum\limits_j A_jx_j \right) \dfrac{\partial (A_ix_i)_t}{\partial (x_i)_k} \right] \right)_{k=1}^{n_i} \\
+= & \operatorname{grad} c_i(x_i) - \left( \sum\limits_{1\leqslant t \leqslant m} \left[ \left( \sum\limits_{1\leqslant h \leqslant m} \partial_h P_t\left( \sum\limits_j A_jx_j \right) \dfrac{\partial \left( \sum\limits_j A_jx_j \right)_h}{\partial (x_i)_k} \right) (A_ix_i)_t \right.\right. \\
+& \left.\left. \hspace{16em} + P_t \left( \sum\limits_j A_jx_j \right) \dfrac{\partial \left( \sum\limits_{s} (A_i)_{ts} (x_i)_s \right)}{\partial (x_i)_k} \right] \right)_{k=1}^{n_i} \\
+= & \operatorname{grad} c_i(x_i) - \left( \sum\limits_{1\leqslant t \leqslant m} \left[ \left( \sum\limits_{1\leqslant h \leqslant m} \partial_h P_t\left( \sum\limits_j A_jx_j \right) \dfrac{\partial \left( \sum\limits_j\sum\limits_s (A_j)_{hs} (x_j)_s \right)}{\partial (x_i)_k} \right) \sum\limits_s (A_i)_{ts} (x_i)_s \right.\right. \\
+& \left.\left. \hspace{24em} + P_t \left( \sum\limits_j A_jx_j \right) (A_i)_{tk} \right] \right)_{k=1}^{n_i} \\
+= & \operatorname{grad} c_i(x_i) - \left( \sum\limits_{1\leqslant t \leqslant m} \left[ \left( \sum\limits_{1\leqslant h \leqslant m} \partial_h P_t\left( \sum\limits_j A_jx_j \right) (A_i)_{hk} \right) \sum\limits_s (A_i)_{ts} (x_i)_s \right.\right. \\
+& \left.\left. \hspace{24em} + P_t \left( \sum\limits_j A_jx_j \right) (A_i)_{tk} \right] \right)_{k=1}^{n_i} \\
+= & \operatorname{grad} c_i(x_i) - \left( \sum\limits_{1\leqslant t \leqslant m} \left[ \left( \sum\limits_{1\leqslant h \leqslant m} \partial_h P_t\left( Ax \right) (A_i)_{hk} \right) \sum\limits_s (A_i)_{ts} (x_i)_s + P_t \left( Ax \right) (A_i)_{tk} \right] \right)_{k=1}^{n_i}
+\end{align*}
+\endgroup
+
+\printbibliography
