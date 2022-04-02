@@ -3,7 +3,22 @@ Computation of the gradient of the function in equation (36) in \citep{Yi_2019}
 
 Let
 $$g(x_i) = f_i(x_i, \mathbf{x}_{-i}) = c_i(x_i) - (P(Ax))^T A_ix_i,$$
-with $1 \leqslant i \leqslant N$, $x_i \in \mathbb{R}^{n_i}$, $c_i: \mathbb{R}^{n_i} \supset \Omega_i \to \mathbb{R}$ is local production cost function, $P: \mathbb{R}^m \to \mathbb{R}^m$ maps the total supply of each market to its corresponding price, $A = [A_1, \ldots, A_N]$, $x = \operatorname{col}(x_1, \ldots, x_N)$, $Ax = \sum\limits_{1 \leqslant j \leqslant N} A_ix_i$. Then
+with $1 \leqslant i \leqslant N$, $x_i \in \mathbb{R}^{n_i}$, $c_i: \mathbb{R}^{n_i} \supset \Omega_i \to \mathbb{R}$ is local production cost function, $P: \mathbb{R}^m \to \mathbb{R}^m$ maps the total supply of each market to its corresponding price, $A = [A_1, \ldots, A_N]$, $x = \operatorname{col}(x_1, \ldots, x_N)$, $Ax = \sum\limits_{1 \leqslant j \leqslant N} A_ix_i$. 
+
+Let $P_i: \mathbb{R}^{n_i} \to \mathbb{R}^m$ be the function of supply of the $i$-th company to the markets, i.e. $p_i(x_i) = P(Ax) = P\left(\sum\limits_{1 \leqslant j \leqslant N} A_ix_i\right)$. Then
+\begin{align*}
+\operatorname{grad} g(x_i) & = \nabla_{x_i} f_i(x_i, \mathbf{x}_{-i}) = \operatorname{grad} c_i(x_i) - \left( \dfrac{\partial \left( (p_i(x_i))^T A_ix_i \right)}{\partial (x_i)_k} \right)_{k=1}^{n_i} \\
+& = \operatorname{grad} c_i(x_i) - \left( \dfrac{\partial \left( \sum\limits_{1\leqslant t \leqslant m} (p_i(x_i))_t (A_ix_i)_t \right)}{\partial (x_i)_k} \right)_{k=1}^{n_i} \\
+& = \operatorname{grad} c_i(x_i) - \left( \sum\limits_{1\leqslant t \leqslant m}\left( \dfrac{\partial \left( (p_i(x_i))_t \right)}{\partial (x_i)_k} (A_ix_i)_t + \dfrac{\partial \left( (A_ix_i)_t \right)}{\partial (x_i)_k} (p_i(x_i))_t \right) \right)_{k=1}^{n_i} \\
+% & = \operatorname{grad} c_i(x_i) - \left( \sum\limits_{1\leqslant t \leqslant m}\left( \left(\operatorname{Jac} (p_i(x_i)) \right)_{tk} (A_ix_i)_t + \dfrac{\partial \left( \sum\limits_{s} (A_i)_{ts} (x_i)_s \right)}{\partial (x_i)_k} (p_i(x_i))_t \right) \right)_{k=1}^{n_i} \\
+& = \operatorname{grad} c_i(x_i) - \left( \sum\limits_{1\leqslant t \leqslant m}\left( \left(\operatorname{Jac} (p_i)(x_i) \right)_{tk} (A_ix_i)_t + (A_i)_{tk} (p_i(x_i))_t \right) \right)_{k=1}^{n_i} \\
+& = \operatorname{grad} c_i(x_i) - \left( \langle \operatorname{Jac}(p_i)(x_i)_{[:,k]}, A_ix_i \rangle + \langle (A_i)_{[:,k]}, p_i(x_i) \rangle \right)_{k=1}^{n_i} \\
+& =\operatorname{grad} c_i(x_i) - \left( \operatorname{Jac}(p_i)(x_i) \right)^T A_ix_i - A_i^T p_i(x_i),
+\end{align*}
+with $\operatorname{Jac}(p_i)(x_i) = \left( \operatorname{Jac}(P)(\sum\limits_j A_jx_j) \right) \cdot A_i$
+
+
+Or equivalently,
 
 \begingroup
 \allowdisplaybreaks
