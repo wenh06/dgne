@@ -39,7 +39,7 @@ class Agent(ReprMixin):
         objective_grad: Callable[[np.ndarray, np.ndarray], np.ndarray],
         step_sizes: Sequence[float] = [0.1, 0.1, 0.1],
         alpha: Optional[float] = None,
-        cache_size: int = 1,
+        cache_size: int = -1,
     ) -> NoReturn:
         """
 
@@ -70,7 +70,7 @@ class Agent(ReprMixin):
         alpha: float, optional,
             factor for the extrapolation of the variables (x, z, lambda)
             if alpha is None, then the extrapolation is disabled
-        cache_size: int, default 1,
+        cache_size: int, default -1,
             size of the cache for the variables (x, lambda),
             shoule be a positive integer, or -1 for unlimited cache size
 
@@ -341,6 +341,10 @@ class Agent(ReprMixin):
         if np.isfinite(self.__cache_size):
             return self.__cache_size
         return -1
+
+    def get_cache(self) -> List[Dict[str, np.ndarray]]:
+        """ """
+        return list(self.__cache)
 
     def extra_repr_keys(self) -> List[str]:
         return [
