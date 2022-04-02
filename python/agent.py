@@ -248,6 +248,16 @@ class Agent(ReprMixin):
             dp = np.insert(dp, insert_pos, self.decision, axis=0)
         return dp
 
+    @property
+    def objective(self) -> Callable:
+        """ """
+        return self._objective
+
+    @property
+    def objective_grad(self) -> Callable:
+        """ """
+        return self._objective_grad
+
     def extra_repr_keys(self) -> List[str]:
         return [
             "agent_id",

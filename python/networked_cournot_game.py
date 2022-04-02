@@ -93,32 +93,6 @@ class Company(Agent):
             self._market_price(decision, profile).T, np.matmul(self.A, decision)
         )
 
-        # def objective_grad(decision: np.ndarray, profile: np.ndarray) -> np.ndarray:
-        #     """
-        #     gradient of self._objective w.r.t. decision
-        #     """
-        #     return (
-        #         self._product_cost_grad(decision)
-        #         - np.matmul(
-        #             self._market_price_jac(decision, profile).T,
-        #             np.matmul(self.A, decision),
-        #         )
-        #         - np.matmul(self.A.T, self._market_price(decision, profile))
-        #     )
-        # num_markets = self.A.shape[0]
-        # g = np.zeros(self.A.shape[1])
-        # for k in range(self.dim):
-        #     g[k] = self._product_cost_grad(decision)[k] - sum(
-        #         [
-        #             np.dot(
-        #                 self._market_price_jac(decision, profile)[t], self.A[:, k]
-        #             )
-        #             * np.dot(self.A[t], decision)
-        #             for t in range(num_markets)
-        #         ]
-        #     ) - np.dot(self._market_price(decision, profile), self.A[:, k])
-        # return g
-
         self._objective_grad = lambda decision, profile: (
             self._product_cost_grad(decision)
             - np.matmul(
@@ -131,6 +105,40 @@ class Company(Agent):
     @property
     def num_markets(self) -> int:
         return self._coeff.shape[0]
+
+    @property
+    def market_price(self) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+        """
+        market price function,
+        takes decision and profile as input,
+        essentially it is a map from R^m to R^m,
+        which maps the total supply of each market to its corresponding price
+        """
+        return self._market_price
+
+    @property
+    def market_price_jac(self) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+        """
+        jacobian of the market price function (as function of the decision),
+        taing decision and profile as input
+        """
+        return self._market_price_jac
+
+    @property
+    def product_cost(self) -> Callable[[np.ndarray], float]:
+        """
+        product cost function,
+        takes decision as input,
+        essentially it is a map from R^n (more precisely from `ccs`) to R
+        """
+        return self._product_cost
+
+    @property
+    def product_cost_grad(self) -> Callable[[np.ndarray], np.ndarray]:
+        """
+        gradient of the product cost function, w.r.t. decision
+        """
+        return self._product_cost_grad
 
 
 class NetworkedCournotGame(ReprMixin):
