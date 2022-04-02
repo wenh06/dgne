@@ -2,7 +2,7 @@
 """
 
 from functools import partial
-from typing import NoReturn, List, Tuple, Sequence
+from typing import NoReturn, List, Tuple, Sequence, Optional
 
 import numpy as np
 
@@ -60,9 +60,12 @@ def setup_simulation(
     market_company_connections: np.ndarray = _market_company_connections,
     market_capacities: np.ndarray = _market_capacities,
     step_sizes: Sequence[float] = (0.03, 0.2, 0.03),
+    alpha: Optional[float] = None,
     **kwargs: dict,
-) -> Tuple[List[Company], Graph, Graph]:
+) -> NetworkedCournotGame:
     """
+
+    Setup the simulation according to section 7 of the paper.
 
     Parameters
     ----------
@@ -80,11 +83,35 @@ def setup_simulation(
     step_sizes: sequence of float,
         3-tuples of step sizes for x, z, and lam, respectively,
         namely tau, nu, and sigma, respectively
+    alpha: float, optional,
+        factor for the extrapolation of the variables (x, z, lambda)
+        if alpha is None, then the extrapolation is disabled
+    kwargs: dict,
+        additional keyword arguments,
+        for changing the parameters of the game, including:
+            - multiplier_edge_set:
+                sequence of 2-tuples of int,
+                of variable length
+            - market_capacities: sequence of float,
+                of length num_markets
+            - market_P: sequence of float,
+                of length num_markets
+            - market_D: sequence of float,
+                of length num_markets
+            - product_cost_parameters: dict,
+                parameters for the product cost function,
+                with items "pi", "b",
+                "pi" is a sequence of int, of length num_companies
+                "b" is a sequence of np.ndarray, of length num_companies
 
     Returns
     -------
     networked_cournot_game: NetworkedCournotGame,
         an instance of NetworkedCournotGame
+
+    NOTE
+    ----
+    Most parameters of the game have default values in this function
 
     """
 
@@ -139,7 +166,7 @@ def setup_simulation(
     # interference_graph.random_weights()
 
     # Player i decides its strategy in the competition
-    # in n_i markets by delivering x_i ∈ R^n_i amount of products to the
+    # in n_i markets by delivering x_i ∈ R^{n_i} amount of products to the
     # markets it connects with
     num_company_market_connection = np.array(
         [(market_company_connections[:, 1] == i).sum() for i in range(num_companies)],
@@ -174,11 +201,13 @@ def setup_simulation(
     # multiplier edge set, decribed in section 7.2 as
     # "We adopt a ring graph arranged in alphabetical order
     # with additional edges (2, 15), (6, 13) as the multiplier graph"
-    multiplier_edge_set = np.array(
-        [[i, i + 1] for i in range(num_companies - 1)]
-        + [[num_companies - 1, 0], [2 - 1, 15 - 1], [6 - 1, 13 - 1]],
-        dtype=int,
-    )
+    multiplier_edge_set = kwargs.get("multiplier_edge_set", None)
+    if multiplier_edge_set is None:
+        multiplier_edge_set = np.array(
+            [[i, i + 1] for i in range(num_companies - 1)]
+            + [[num_companies - 1, 0], [2 - 1, 15 - 1], [6 - 1, 13 - 1]],
+            dtype=int,
+        )
 
     # construct multiplier graph
     multiplier_graph = Graph(num_vertices=num_companies, edge_set=multiplier_edge_set)
@@ -187,51 +216,166 @@ def setup_simulation(
 
     ###############################################################################
     # Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
-    market_capacities = RNG.uniform(0.5, 1, num_markets)
+    market_capacities = kwargs.get(
+        "market_capacities", RNG.uniform(0.5, 1, num_markets)
+    )
     ###############################################################################
 
     ###############################################################################
-    # randomly drawn from [2, 4] and [0.5, 1]
-    market_P = RNG.uniform(2, 4, num_markets)
-    market_D = RNG.uniform(0.5, 1, num_markets)
+    # The market price is taken as a linear function P − DAx
+    # known as a linear inverse demand function in economics
+    # P, D randomly drawn from [2, 4] and [0.5, 1]
+    market_P = kwargs.get("market_P", RNG.uniform(2, 4, num_markets))
+    market_D = kwargs.get("market_D", RNG.uniform(0.5, 1, num_markets))
+
+    def _martket_price(supply: np.ndarray) -> np.ndarray:
+        """
+
+        Linear inverse demand function: P(s) = p − Ds,
+        a function from R^m to R^m
+
+        Parameters
+        ----------
+        supply : np.ndarray
+            the supply vector
+
+        Returns
+        -------
+        np.ndarray,
+            the market price vector
+
+        """
+        return market_P - market_D * supply
 
     def market_price(
-        company_id: int, decision: np.ndarray, profile: np.ndarray
-    ) -> float:
-        """ """
-        split_inds = np.append(0, np.cumsum(num_company_market_connection))
-        mp = market_P - market_D * np.matmul(
-            total_coeff, np.insert(profile, split_inds[company_id], decision)
+        company_id: int,
+        decision: np.ndarray,
+        profile: np.ndarray,
+        num_cmc: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        r"""
+
+        market price function from the perspective of company i,
+        i.e. the map
+            .. math::
+                P(x_i) := P(x_i, x_{-i}) = P(x) = p − DAx = p − D \left( \sum\limits_{i=1}^{N} A_ix_i \right)
+
+        Parameters
+        ----------
+        company_id: int,
+            the id of the company
+        decision: np.ndarray,
+            the decision of the company
+        profile: np.ndarray,
+            the concatenated decision profile of the other companies in the market
+        num_cmc: np.ndarray, optional
+            the array of company market connection numbers,
+            of shape (num_companies,),
+            if None, default to `num_company_market_connection`
+
+        Returns
+        -------
+        mp: np.ndarray,
+            the market price
+
+        """
+        split_inds = np.append(0, np.cumsum(num_cmc or num_company_market_connection))
+        mp = _martket_price(
+            supply=np.matmul(
+                total_coeff, np.insert(profile, split_inds[company_id], decision)
+            )
         )
         return mp
 
-    def market_price_grad(
-        company_id: int, decision: np.ndarray, profile: np.ndarray
+    def _market_price_jac(supply: np.ndarray) -> np.ndarray:
+        r"""
+
+        jacobbian of the function `market_price` as a function from R^m to R^m
+        i.e. the jacobian of the map
+            .. math::
+                P(s) = P − Ds
+
+        Parameters
+        ----------
+        supply: np.ndarray,
+            the supply vector
+
+        Returns
+        -------
+        np.ndarray,
+            the jacobbian of the market price function `_market_price`
+        """
+        return -np.diag(market_D)
+
+    def market_price_jac(
+        company_id: int,
+        decision: np.ndarray,
+        profile: np.ndarray,
+        num_cmc: Optional[np.ndarray] = None,
     ) -> np.ndarray:
+        r"""
+
+        jacobian of the market price function from the perspective of company i,
+        i.e. jacobian of the map
+            .. math::
+                P(x_i) := P(x_i, x_{-i}) = P(x) = p − DAx = p − D \left( \sum\limits_{i=1}^{N} A_ix_i \right)
+
+        Parameters
+        ----------
+        company_id: int,
+            the id of the company
+        decision: np.ndarray,
+            the decision of the company
+        profile: np.ndarray,
+            the concatenated decision profile of the other companies in the market
+        num_cmc: np.ndarray, optional
+            the array of company market connection numbers,
+            of shape (num_companies,),
+            if None, default to `num_company_market_connection`
+
+        Returns
+        -------
+        np.ndarray,
+            the Jacobian of the market price as a function of `decision`
+
         """
-        gradient as a function from R^m to R^m
-        """
-        mpg = -np.diag(market_D)
-        return mpg
+        split_inds = np.append(0, np.cumsum(num_cmc or num_company_market_connection))
+        supply = np.matmul(
+            total_coeff, np.insert(profile, split_inds[company_id], decision)
+        )
+        A_i = total_coeff[:, split_inds[company_id] : split_inds[company_id + 1]]
+        return np.matmul(_market_price_jac(supply), A_i)
 
     ###############################################################################
 
     ###############################################################################
+    # local cost function of palyer i, denoted by c_i(x_i)
+    # in section 7.2 as "c_i(x_i) = \pi \left(∑_{j = 1}^{n_i} [x_i]_j \right)^2 + b_i^T x_i"
     # π_i is randomly drawn from [1, 8],
     # and each component of b_i is randomly drawn from [0.1, 0.6].
-    product_cost_parameters = dict(
-        pi=[RNG.integers(1, 8, endpoint=True) for _ in range(num_companies)],
-        b=[RNG.uniform(0.1, 0.6, n) for n in num_company_market_connection],
-    )
+    product_cost_parameters = kwargs.get("product_cost_parameters", None)
+    if product_cost_parameters is None:
+        product_cost_parameters = dict(
+            pi=[RNG.integers(1, 8, endpoint=True) for _ in range(num_companies)],
+            b=[RNG.uniform(0.1, 0.6, n) for n in num_company_market_connection],
+        )
 
     def product_cost(
         pi: int,
         b: np.ndarray,
         decision: np.ndarray,
     ) -> float:
-        """ """
+        r"""
+
+        local cost function of palyer i, defined as
+
+            .. math::
+                c_i(x_i) = \pi \left(∑_{j = 1}^{n_i} [x_i]_j \right)^2 + b_i^T x_i
+
+        """
         decision = np.array(decision).flatten()
-        return pi * np.linalg.norm(decision) ** 2 + np.dot(decision, b)
+        # return pi * np.linalg.norm(decision) ** 2 + np.dot(decision, b)
+        return pi * decision.sum() ** 2 + np.dot(decision, b)
 
     def product_cost_grad(
         pi: int,
@@ -242,7 +386,8 @@ def setup_simulation(
         gradient of `product_cost` w.r.t. decision
         """
         decision = np.array(decision).flatten()
-        return 2 * pi * decision + b
+        # return 2 * pi * decision + b
+        return 2 * pi * decision.sum() + b
 
     ###############################################################################
 
@@ -260,7 +405,7 @@ def setup_simulation(
             ceoff=company_parameters["ceoff"][i],
             offset=market_capacities,
             market_price=partial(market_price, i),
-            market_price_grad=partial(market_price_grad, i),
+            market_price_grad=partial(market_price_jac, i),
             product_cost=partial(
                 product_cost,
                 product_cost_parameters["pi"][i],
@@ -288,9 +433,10 @@ def setup_simulation(
 
 def run_simulation() -> NoReturn:
     """ """
-    companies, multiplier_graph, interference_graph = setup_simulation(
+    networked_cournot_game = setup_simulation(
         _num_companies, _num_markets, _market_company_connections
     )
+    networked_cournot_game.run_simulation()
 
 
 if __name__ == "__main__":
