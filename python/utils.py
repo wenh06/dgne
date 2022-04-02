@@ -2,7 +2,7 @@
 """
 
 from functools import wraps
-from typing import List, Callable
+from typing import List, Callable, NoReturn
 
 import numpy as np
 
