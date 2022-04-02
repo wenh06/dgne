@@ -1,6 +1,7 @@
 """
 """
 
+import argparse
 from functools import partial
 from typing import NoReturn, List, Tuple, Sequence, Optional
 
@@ -431,13 +432,42 @@ def setup_simulation(
     return networked_cournot_game
 
 
-def run_simulation() -> NoReturn:
-    """ """
+def run_simulation(num_steps: int) -> NoReturn:
+    """
+
+    Parameters
+        ----------
+        num_steps: int,
+            number of steps to run the simulation
+
+    """
     networked_cournot_game = setup_simulation(
         _num_companies, _num_markets, _market_company_connections
     )
-    networked_cournot_game.run_simulation()
+    networked_cournot_game.run_simulation(num_steps)
+
+
+def get_parser() -> dict:
+    """ """
+    description = "Run a simulation of the Networked Cournot Game"
+    parser = argparse.ArgumentParser(
+        description=description,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-n",
+        "--num-steps",
+        type=int,
+        default=10000,
+        help=f"number of simulation steps",
+        dest="num_steps",
+    )
+
+    args = vars(parser.parse_args())
+
+    return args
 
 
 if __name__ == "__main__":
-    run_simulation()
+    args = get_parser()
+    run_simulation(args["num_steps"])
