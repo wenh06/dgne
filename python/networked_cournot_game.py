@@ -29,7 +29,7 @@ class Company(Agent):
         ceoff: np.ndarray,
         offset: np.ndarray,
         market_price: Callable[[np.ndarray, np.ndarray], np.ndarray],
-        market_price_grad: Callable[[np.ndarray, np.ndarray], np.ndarray],
+        market_price_jac: Callable[[np.ndarray, np.ndarray], np.ndarray],
         product_cost: Callable[[np.ndarray], float],
         product_cost_grad: Callable[[np.ndarray], np.ndarray],
         step_sizes: Sequence[float] = [0.1, 0.1, 0.1],
@@ -54,8 +54,8 @@ class Company(Agent):
             takes self.x and self.decision_profile(others) as input,
             essentially it is a map from R^m to R^m,
             which maps the total supply of each market to its corresponding price
-        market_price_grad: Callable[[np.ndarray, np.ndarray], np.ndarray],
-            gradient of the market price function, as a map from R^m to R^m
+        market_price_jac: Callable[[np.ndarray, np.ndarray], np.ndarray],
+            jacobian of the market price function (as function of self.x)
         product_cost: Callable[[np.ndarray], float],
             product cost function,
             takes self.x as input,
@@ -67,6 +67,7 @@ class Company(Agent):
             namely tau, nu, and sigma, respectively
         alpha: float, optional,
             factor for the extrapolation of the variables (x, z, lambda)
+
         """
         super().__init__(
             company_id,
@@ -80,7 +81,7 @@ class Company(Agent):
             alpha,
         )
         self._market_price = market_price
-        self._market_price_grad = market_price_grad
+        self._market_price_jac = market_price_jac
         self._product_cost = product_cost
         self._product_cost_grad = product_cost_grad
 
@@ -92,26 +93,40 @@ class Company(Agent):
             self._market_price(decision, profile).T, np.matmul(self.A, decision)
         )
 
-        def objective_grad(decision: np.ndarray, profile: np.ndarray) -> np.ndarray:
-            """
-            gradient of self._objective w.r.t. decision
-            """
-            num_markets = self.A.shape[0]
-            g = np.zeros(self.A.shape[1])
-            for k in range(self.dim):
-                g[k] = self._product_cost_grad(decision)[k] - sum(
-                    [
-                        np.dot(
-                            self._market_price_grad(decision, profile)[t], self.A[:, k]
-                        )
-                        * np.dot(self.A[t], decision)
-                        + self._market_price(decision, profile)[t] * self.A[t, k]
-                        for t in range(num_markets)
-                    ]
-                )
-            return g
+        # def objective_grad(decision: np.ndarray, profile: np.ndarray) -> np.ndarray:
+        #     """
+        #     gradient of self._objective w.r.t. decision
+        #     """
+        #     return (
+        #         self._product_cost_grad(decision)
+        #         - np.matmul(
+        #             self._market_price_jac(decision, profile).T,
+        #             np.matmul(self.A, decision),
+        #         )
+        #         - np.matmul(self.A.T, self._market_price(decision, profile))
+        #     )
+        # num_markets = self.A.shape[0]
+        # g = np.zeros(self.A.shape[1])
+        # for k in range(self.dim):
+        #     g[k] = self._product_cost_grad(decision)[k] - sum(
+        #         [
+        #             np.dot(
+        #                 self._market_price_jac(decision, profile)[t], self.A[:, k]
+        #             )
+        #             * np.dot(self.A[t], decision)
+        #             for t in range(num_markets)
+        #         ]
+        #     ) - np.dot(self._market_price(decision, profile), self.A[:, k])
+        # return g
 
-        self._objective_grad = objective_grad
+        self._objective_grad = lambda decision, profile: (
+            self._product_cost_grad(decision)
+            - np.matmul(
+                self._market_price_jac(decision, profile).T,
+                np.matmul(self.A, decision),
+            )
+            - np.matmul(self.A.T, self._market_price(decision, profile))
+        )
 
     @property
     def num_markets(self) -> int:
@@ -130,7 +145,20 @@ class NetworkedCournotGame(ReprMixin):
         interference_graph: Graph,
         market_capacities: np.ndarray,
     ) -> NoReturn:
-        """ """
+        """
+
+        Parameters
+        ----------
+        companies: sequence of Company,
+            companies in the game
+        multiplier_graph: Graph,
+            the multiplier graph
+        interference_graph: Graph,
+            the interference graph
+        market_capacities: np.ndarray,
+            market capacities,
+
+        """
         self._companies = companies
         self._market_capacities = market_capacities
         self._multiplier_graph = multiplier_graph

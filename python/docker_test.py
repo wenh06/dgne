@@ -6,8 +6,10 @@ import numpy as np
 from graph import Graph
 from agent import Agent
 from ccs import (
-    Rectangle, L2Ball,
-    NonNegativeOrthant, NonPositiveOrthant,
+    Rectangle,
+    L2Ball,
+    NonNegativeOrthant,
+    NonPositiveOrthant,
 )
 
 

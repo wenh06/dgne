@@ -36,7 +36,7 @@ def set_seed(seed: int) -> NoReturn:
 
 
 def default_class_repr(c: object, align: str = "center", depth: int = 1) -> str:
-    """finished, checked,
+    """
 
     Parameters
     ----------

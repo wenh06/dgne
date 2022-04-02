@@ -67,6 +67,7 @@ class Agent(ReprMixin):
             namely tau, nu, and sigma, respectively
         alpha: float, optional,
             factor for the extrapolation of the variables (x, z, lambda)
+            if alpha is None, then the extrapolation is disabled
 
         NOTE: the linear constraint is assumed to be of the form
             offset - ceoff @ x <= 0
