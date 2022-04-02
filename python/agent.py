@@ -1,6 +1,7 @@
 """
 """
 
+from collections import deque
 from typing import NoReturn, List, Union, Callable, Sequence, Optional
 from numbers import Real
 
@@ -38,6 +39,7 @@ class Agent(ReprMixin):
         objective_grad: Callable[[np.ndarray, np.ndarray], np.ndarray],
         step_sizes: Sequence[float] = [0.1, 0.1, 0.1],
         alpha: Optional[float] = None,
+        cache_size: int = 1,
     ) -> NoReturn:
         """
 
@@ -68,6 +70,10 @@ class Agent(ReprMixin):
         alpha: float, optional,
             factor for the extrapolation of the variables (x, z, lambda)
             if alpha is None, then the extrapolation is disabled
+        cache_size: int, default 1,
+            size of the cache for the variables (x, lambda),
+            shoule be a positive integer, or -1 for unlimited cache size
+
 
         NOTE: the linear constraint is assumed to be of the form
             offset - ceoff @ x <= 0
@@ -80,6 +86,14 @@ class Agent(ReprMixin):
         self._objective_grad = objective_grad
         self.tau, self.nu, self.sigma = step_sizes
         self.alpha = alpha
+        self.__cache_size = cache_size
+        assert isinstance(cache_size, int) and (
+            cache_size > 0 or cache_size == -1
+        ), f"cache_size should be a positive integer or -1, but got {cache_size}"
+        if cache_size == -1:
+            self.__cache_size = float("inf")
+        self.__cache = deque()
+
         if constraint_type == 1:
             self._multiplier_orthant = NonNegativeOrthant(self.b.shape[0])
         elif constraint_type == 2:
@@ -98,11 +112,13 @@ class Agent(ReprMixin):
         self._multiplier = np.zeros((self._multiplier_orthant.dim,))
         # self._aux_var = self._es.random_point()  # z_i
         self._aux_var = np.zeros((self._es.dim,))
-        self._prev_decision = self._decision.copy()
-        self._prev_aux_var = self._aux_var.copy()
-        self._prev_multiplier = None
+        prev_var = dict(
+            x=self._decision.copy(),
+            z=self._aux_var.copy(),
+            lam=None,
+        )
         if self.alpha is not None:
-            self._prev_multiplier = self._multiplier.copy()
+            prev_var["lam"] = self._multiplier.copy()
 
     def update(
         self,
@@ -110,9 +126,29 @@ class Agent(ReprMixin):
         interference_graph: Graph,
         multiplier_graph: Graph,
     ) -> NoReturn:
-        """ """
-        self._prev_decision = self.x.copy()
-        self._prev_aux_var = self.z.copy()
+        """
+
+        the update step of the agent
+
+        Parameters
+        ----------
+        others : list of Agent,
+            list of other agents
+        interference_graph : Graph,
+            the interference graph
+        multiplier_graph : Graph,
+            the multiplier graph
+
+        """
+        self.__cache.append(
+            dict(
+                x=self.x.copy(),
+                z=self.z.copy(),
+                lam=self.lam.copy(),
+            )
+        )
+        if self.cached_size > self.__cache_size:
+            self.__cache.popleft()
         interference_inds = [
             i
             for i, other in enumerate(others)
@@ -143,7 +179,18 @@ class Agent(ReprMixin):
         others: List["Agent"],
         multiplier_graph: Graph,
     ) -> NoReturn:
-        """ """
+        """
+
+        the dual update step of the agent
+
+        Parameters
+        ----------
+        others : list of Agent,
+            list of other agents
+        multiplier_graph : Graph,
+            the multiplier graph
+
+        """
         multiplier_inds = [
             i
             for i, other in enumerate(others)
@@ -154,14 +201,14 @@ class Agent(ReprMixin):
             self.extrapolated_multiplier
             - self.sigma
             * (
-                np.matmul(self.A, 2 * self.x - self._prev_decision)
+                np.matmul(self.A, 2 * self.x - self.prev_x)
                 - self.b
                 + sum(
                     [
                         W[self.agent_id, others[j].agent_id]
                         * (
                             2 * (self.z - others[j].z)
-                            - (self._prev_aux_var - others[j]._prev_aux_var)
+                            - (self.prev_z - others[j].prev_z)
                         )
                         for j in multiplier_inds
                     ]
@@ -213,22 +260,46 @@ class Agent(ReprMixin):
         return self._offset
 
     @property
+    def prev_decision(self) -> np.ndarray:
+        return self.__cache[-1]["x"]
+
+    @property
+    def prev_x(self) -> np.ndarray:
+        return self.prev_decision
+
+    @property
+    def prev_multiplier(self) -> np.ndarray:
+        return self.__cache[-1]["lam"]
+
+    @property
+    def prev_lam(self) -> np.ndarray:
+        return self.prev_multiplier
+
+    @property
+    def prev_aux_var(self) -> np.ndarray:
+        return self.__cache[-1]["z"]
+
+    @property
+    def prev_z(self) -> np.ndarray:
+        return self.prev_aux_var
+
+    @property
     def extrapolated_decision(self) -> np.ndarray:
         if self.alpha is None:
             return self.x
-        return self.x + self.alpha * (self.x - self._prev_decision)
+        return self.x + self.alpha * (self.x - self.prev_x)
 
     @property
     def extrapolated_aux_var(self) -> np.ndarray:
         if self.alpha is None:
             return self.z
-        return self.z + self.alpha * (self.z - self._prev_aux_var)
+        return self.z + self.alpha * (self.z - self.prev_z)
 
     @property
     def extrapolated_multiplier(self) -> np.ndarray:
         if self.alpha is None:
             return self.lam
-        return self.lam + self.alpha * (self.lam - self._prev_multiplier)
+        return self.lam + self.alpha * (self.lam - self.prev_lam)
 
     def degree(self, adj_mat: np.ndarray) -> Real:
         """ """
@@ -257,6 +328,18 @@ class Agent(ReprMixin):
     def objective_grad(self) -> Callable:
         """ """
         return self._objective_grad
+
+    @property
+    def cached_size(self) -> int:
+        """ """
+        return len(self.__cache)
+
+    @property
+    def cache_size(self) -> int:
+        """ """
+        if np.isfinite(self.__cache_size):
+            return self.__cache_size
+        return -1
 
     def extra_repr_keys(self) -> List[str]:
         return [
