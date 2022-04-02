@@ -405,7 +405,7 @@ def setup_simulation(
             ceoff=company_parameters["ceoff"][i],
             offset=market_capacities,
             market_price=partial(market_price, i),
-            market_price_grad=partial(market_price_jac, i),
+            market_price_jac=partial(market_price_jac, i),
             product_cost=partial(
                 product_cost,
                 product_cost_parameters["pi"][i],

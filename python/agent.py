@@ -119,6 +119,7 @@ class Agent(ReprMixin):
         )
         if self.alpha is not None:
             prev_var["lam"] = self._multiplier.copy()
+        self.__cache.append(prev_var)
 
     def update(
         self,
