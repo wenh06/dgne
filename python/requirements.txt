@@ -2,6 +2,6 @@ numpy
 pandas
 scipy
 networkx
-nxmetis
 tqdm
 pytest
+git+https://github.com/networkx/networkx-metis.git
