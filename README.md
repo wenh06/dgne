@@ -9,11 +9,16 @@ Agents are implemented as a class in [python/agent.py](/python/agent.py), conduc
 
 The class [`CCS`](/python/ccs.py) (abbreviation for closed convex set) is mainly used to do projection to this closed convex set in the algorithm. `Rectangle`, `NonNegativeOrthant`, `NonPositiveOrthant` are the most frequently used closed convex sets.
 
-The class [`Graph`] implements the connected symmetric interference graph and multiplier graph, as well as their operations.
+The class [`Graph`](/python/graph.py) implements the connected symmetric interference graph and multiplier graph, as well as their operations.
 
 The class [`NetworkedCournotGame`](/python/networked_cournot_game.py), along with [simulation.py](/python/simulation.py), implements the networked cournot game described in section 7 of \[[1](#ref1)\].
 
 The file [`minimal_example.py`](/python/minimal_example.py) provides some minimal examples containing networked cournot games consisting of 2 companies and 1 or 2 markets.
+
+
+### TODO
+1. implement the `update` and `dual_update` functions as external functions, so that multiprocessing can be used for parallel computation
+2. add stop criteria for the iteration
 
 
 ## [Matlab re-implementation](/matlab/)
