@@ -77,6 +77,10 @@ class Agent(ReprMixin):
 
         NOTE: the linear constraint is assumed to be of the form
             offset - ceoff @ x <= 0
+
+        TODO: implement the `update` and `dual_update` functions as external
+        functions, so that multiprocessing can be used for parallel computation
+
         """
         self.agent_id = agent_id
         self.ccs = ccs
@@ -342,9 +346,43 @@ class Agent(ReprMixin):
             return self.__cache_size
         return -1
 
-    def get_cache(self) -> List[Dict[str, np.ndarray]]:
-        """ """
-        return list(self.__cache)
+    def get_cache(
+        self,
+        key: Optional[str] = None,
+        dims: Optional[Union[int, Sequence[int]]] = None,
+    ) -> Union[List[Dict[str, np.ndarray]], List[np.ndarray], List[float]]:
+        """
+
+        Get cached sequence of variable values of the optimization process
+
+        Parameters
+        ----------
+        key : str, optional,
+            the key of the variable to be returned, by default None
+            can be one of "x", "z", "lam"
+            if None, return all the cached variable values
+        dims : int or sequence of int, optional,
+            the dimensions of the variable to be returned, by default None
+            if None, return all dimensions of the variable values
+
+        Returns
+        -------
+        List[Dict[str, np.ndarray]] or List[np.ndarray] or List[float],
+            if key is None, return a list of dicts of variable values
+            if key is not None, return a list of variable values
+
+        """
+        if key is None:
+            assert dims is None, "dim must be None if key is None"
+            return list(self.__cache)
+        assert key in [
+            "x",
+            "z",
+            "lam",
+        ], f"""key must be one of "x", "z", "lam" or None, but got {key}"""
+        if dims is None:
+            return [cache[key] for cache in self.__cache]
+        return [cache[key][dims] for cache in self.__cache]
 
     def extra_repr_keys(self) -> List[str]:
         return [
