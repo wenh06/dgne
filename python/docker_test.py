@@ -15,6 +15,13 @@ from ccs import (
     NonPositiveOrthant,
 )
 from utils import RNG
+from simulation import run_simulation
+from minimal_example import (
+    setup_minimal_example,
+    market_capacities_homo, market_D_homo, market_P_homo, product_cost_parameters_homo,
+    num_markets_mono, market_capacities_homo_mono, market_D_homo_mono, market_P_homo_mono,
+    product_cost_parameters_homo_mono, market_company_connections_homo_mono,
+)
 
 
 def test_ccs():
@@ -59,27 +66,60 @@ def test_ccs():
 
 
 def test_graph():
-    g = Graph.random(num_vertices=1000, num_neighbors=(4,16))
+    g = Graph.random(num_vertices=1000, num_neighbors=(4, 16))
     assert is_connected(g)
     assert g.is_weighted is False
     assert g.num_vertices == 1000
-    assert all([4 <= len(g.get_neighbors(vertex_id)) for vertex_id in range(g.num_vertices)])
+    assert all(
+        [4 <= len(g.get_neighbors(vertex_id)) for vertex_id in range(g.num_vertices)]
+    )
     g.random_weights(generator=partial(RNG.uniform, 1, 4))
     assert g.is_weighted is True
 
     print("test_graph passed!")
 
 
-def test_agent():
-    pass
-
-
 def test_networked_cournot_game():
-    pass
+    run_simulation(4000)
+
+
+def test_minimal_example():
+    me = setup_minimal_example(verbose=2)
+    me.run_simulation(1000)
+
+
+def test_minimal_example_homo():
+    me_homo = setup_minimal_example(
+        market_capacities=market_capacities_homo,
+        market_P=market_P_homo,
+        market_D=market_D_homo,
+        product_cost_parameters=product_cost_parameters_homo,
+        verbose=2,
+    )
+    me_homo.run_simulation(1000)
+    c1, c2 = me_homo.companies
+
+
+def test_minimal_example_homo_mono():
+    me_homo_mono = setup_minimal_example(
+        num_markets=num_markets_mono,
+        market_company_connections=market_company_connections_homo_mono,
+        market_capacities=market_capacities_homo_mono,
+        market_P=market_P_homo_mono,
+        market_D=market_D_homo_mono,
+        product_cost_parameters=product_cost_parameters_homo_mono,
+        verbose=2,
+    )
+    me_homo_mono.run_simulation(1000)
+    c1, c2 = me_homo_mono.companies
+    assert 0.6 == pytest.approx(c1.x[0]) == pytest.approx(c2.x[0])
+    assert -0.72 == pytest.approx(c1.objective(c1.x, c2.x)) == pytest.approx(c2.objective(c2.x, c1.x))
 
 
 if __name__ == "__main__":
     test_ccs()
     test_graph()
-    test_agent()
     test_networked_cournot_game()
+    test_minimal_example()
+    test_minimal_example_homo()
+    test_minimal_example_homo_mono()

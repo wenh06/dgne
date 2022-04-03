@@ -102,7 +102,7 @@ def setup_simulation(
                 with items "pi", "b",
                 "pi" is a sequence of int, of length num_companies
                 "b" is a sequence of np.ndarray, of length num_companies
-            - verbose: int,
+            - verbose: int, default 0,
                 verbosity level for printing the simulation parameters
 
     Returns
@@ -167,6 +167,8 @@ def setup_simulation(
         num_vertices=num_companies, edge_set=interference_edge_set
     )
     # interference_graph.random_weights()
+    if verbose >= 2:
+        print(f"interference_graph: {interference_graph}")
 
     # Player i decides its strategy in the competition
     # in n_i markets by delivering x_i ∈ R^{n_i} amount of products to the
@@ -215,6 +217,8 @@ def setup_simulation(
     # construct multiplier graph
     multiplier_graph = Graph(num_vertices=num_companies, edge_set=multiplier_edge_set)
     # multiplier_graph.random_weights()
+    if verbose >= 2:
+        print(f"multiplier_graph: {multiplier_graph}")
     ###############################################################################
 
     ###############################################################################
@@ -278,7 +282,9 @@ def setup_simulation(
             the market price
 
         """
-        split_inds = np.append(0, np.cumsum(num_cmc or num_company_market_connection))
+        if num_cmc is None:
+            num_cmc = num_company_market_connection
+        split_inds = np.append(0, np.cumsum(num_cmc))
         mp = _martket_price(
             supply=np.matmul(
                 total_coeff, np.insert(profile, split_inds[company_id], decision)
