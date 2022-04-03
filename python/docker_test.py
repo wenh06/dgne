@@ -87,12 +87,12 @@ def test_graph():
 
 
 def test_networked_cournot_game():
-    run_simulation(4000)
+    run_simulation(1000)
 
 
 def test_minimal_example():
     me = setup_minimal_example(verbose=2)
-    me.run_simulation(1000)
+    me.run_simulation(500)
 
 
 def test_minimal_example_homo():
@@ -103,7 +103,7 @@ def test_minimal_example_homo():
         product_cost_parameters=product_cost_parameters_homo,
         verbose=2,
     )
-    me_homo.run_simulation(1000)
+    me_homo.run_simulation(500)
     c1, c2 = me_homo.companies
 
 
@@ -117,7 +117,7 @@ def test_minimal_example_homo_mono():
         product_cost_parameters=product_cost_parameters_homo_mono,
         verbose=2,
     )
-    me_homo_mono.run_simulation(1000)
+    me_homo_mono.run_simulation(500)
     c1, c2 = me_homo_mono.companies
     assert 0.6 == pytest.approx(c1.x[0]) == pytest.approx(c2.x[0])
     assert (
