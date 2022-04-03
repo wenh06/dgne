@@ -229,9 +229,7 @@ def setup_minimal_example(
     ###############################################################################
 
     ###############################################################################
-    # multiplier edge set, decribed in section 7.2 as
-    # "We adopt a ring graph arranged in alphabetical order
-    # with additional edges (2, 15), (6, 13) as the multiplier graph"
+    # multiplier edge set,
     multiplier_edge_set = kwargs.get("multiplier_edge_set", None)
     if multiplier_edge_set is None:
         multiplier_edge_set = np.array(
@@ -249,7 +247,6 @@ def setup_minimal_example(
     ###############################################################################
     # The market price is taken as a linear function P − DAx
     # known as a linear inverse demand function in economics
-    # P, D randomly drawn from [2, 4] and [0.5, 1]
     market_P = kwargs.get("market_P", np.array([3, 4]))
     market_D = kwargs.get("market_D", np.array([0.5, 1]))
     if verbose >= 1:
@@ -381,8 +378,6 @@ def setup_minimal_example(
     ###############################################################################
     # local cost function of palyer i, denoted by c_i(x_i)
     # in section 7.2 as "c_i(x_i) = \pi \left(∑_{j = 1}^{n_i} [x_i]_j \right)^2 + b_i^T x_i"
-    # π_i is randomly drawn from [1, 8],
-    # and each component of b_i is randomly drawn from [0.1, 0.6].
     product_cost_parameters = kwargs.get("product_cost_parameters", None)
     if product_cost_parameters is None:
         product_cost_parameters = dict(
@@ -462,7 +457,6 @@ def setup_minimal_example(
             company_id=company_id,
             ccs=Rectangle(
                 # Player i has a local constraint 0 < x_i < Θ_i
-                # and each component of Θ_i is randomly drawn from [1, 1.5].
                 np.zeros(
                     (num_company_market_connection[company_id]),
                 ),
