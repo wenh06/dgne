@@ -18,9 +18,16 @@ from utils import RNG
 from simulation import run_simulation
 from minimal_example import (
     setup_minimal_example,
-    market_capacities_homo, market_D_homo, market_P_homo, product_cost_parameters_homo,
-    num_markets_mono, market_capacities_homo_mono, market_D_homo_mono, market_P_homo_mono,
-    product_cost_parameters_homo_mono, market_company_connections_homo_mono,
+    market_capacities_homo,
+    market_D_homo,
+    market_P_homo,
+    product_cost_parameters_homo,
+    num_markets_mono,
+    market_capacities_homo_mono,
+    market_D_homo_mono,
+    market_P_homo_mono,
+    product_cost_parameters_homo_mono,
+    market_company_connections_homo_mono,
 )
 
 
@@ -113,7 +120,11 @@ def test_minimal_example_homo_mono():
     me_homo_mono.run_simulation(1000)
     c1, c2 = me_homo_mono.companies
     assert 0.6 == pytest.approx(c1.x[0]) == pytest.approx(c2.x[0])
-    assert -0.72 == pytest.approx(c1.objective(c1.x, c2.x)) == pytest.approx(c2.objective(c2.x, c1.x))
+    assert (
+        -0.72
+        == pytest.approx(c1.objective(c1.x, c2.x))
+        == pytest.approx(c2.objective(c2.x, c1.x))
+    )
 
 
 if __name__ == "__main__":
