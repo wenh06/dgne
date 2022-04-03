@@ -2,7 +2,7 @@
 """
 
 from collections import deque
-from typing import NoReturn, List, Union, Callable, Sequence, Optional
+from typing import NoReturn, List, Dict, Union, Callable, Sequence, Optional
 from numbers import Real
 
 import numpy as np

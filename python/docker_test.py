@@ -1,9 +1,12 @@
 """
 """
 
+from functools import partial
+
+import pytest
 import numpy as np
 
-from graph import Graph
+from graph import Graph, is_connected
 from agent import Agent
 from ccs import (
     Rectangle,
@@ -11,6 +14,7 @@ from ccs import (
     NonNegativeOrthant,
     NonPositiveOrthant,
 )
+from utils import RNG
 
 
 def test_ccs():
@@ -55,7 +59,15 @@ def test_ccs():
 
 
 def test_graph():
-    pass
+    g = Graph.random(num_vertices=1000, num_neighbors=(4,16))
+    assert is_connected(g)
+    assert g.is_weighted is False
+    assert g.num_vertices == 1000
+    assert all([4 <= len(g.get_neighbors(vertex_id)) for vertex_id in range(g.num_vertices)])
+    g.random_weights(generator=partial(RNG.uniform, 1, 4))
+    assert g.is_weighted is True
+
+    print("test_graph passed!")
 
 
 def test_agent():
