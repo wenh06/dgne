@@ -1,6 +1,7 @@
 """
 """
 
+import time
 from collections import deque
 from typing import NoReturn, List, Dict, Union, Callable, Sequence, Optional
 from numbers import Real
@@ -75,11 +76,15 @@ class Agent(ReprMixin):
             shoule be a positive integer, or -1 for unlimited cache size
 
 
-        NOTE: the linear constraint is assumed to be of the form
+        NOTE
+        ----
+        the linear constraint is assumed to be of the form
             offset - ceoff @ x <= 0
 
-        TODO: implement the `update` and `dual_update` functions as external
-        functions, so that multiprocessing can be used for parallel computation
+        TODO
+        ----
+        1. implement the `update` and `dual_update` functions as external functions, so that multiprocessing can be used for parallel computation
+        2. add stop criteria for the iteration
 
         """
         self.agent_id = agent_id
@@ -124,6 +129,7 @@ class Agent(ReprMixin):
         if self.alpha is not None:
             prev_var["lam"] = self._multiplier.copy()
         self.__cache.append(prev_var)
+        self.__metrics = deque()
 
     def update(
         self,
@@ -154,6 +160,7 @@ class Agent(ReprMixin):
         )
         if self.cached_size > self.__cache_size:
             self.__cache.popleft()
+        start = time.time()
         interference_inds = [
             i
             for i, other in enumerate(others)
@@ -178,6 +185,11 @@ class Agent(ReprMixin):
                 for j in multiplier_inds
             ]
         )
+        self.__metrics.append(
+            dict(
+                update_time=time.time() - start,
+            )
+        )
 
     def dual_update(
         self,
@@ -196,6 +208,7 @@ class Agent(ReprMixin):
             the multiplier graph
 
         """
+        start = time.time()
         multiplier_inds = [
             i
             for i, other in enumerate(others)
@@ -226,6 +239,13 @@ class Agent(ReprMixin):
                     ]
                 )
             )
+        )
+        self.__metrics[-1]["dual_update_time"] = time.time() - start
+        self.__metrics[-1]["objective"] = self.objective(
+            self.x, self.decision_profile(others, True)
+        )
+        self.__metrics[-1]["objective_grad_norm"] = np.linalg.norm(
+            self._objective_grad(self.x, self.decision_profile(others, True))
         )
 
     @property
@@ -383,6 +403,37 @@ class Agent(ReprMixin):
         if dims is None:
             return [cache[key] for cache in self.__cache]
         return [cache[key][dims] for cache in self.__cache]
+
+    def get_metrics(
+        self, key: Optional[str] = None
+    ) -> Union[List[Dict[str, float]], List[float]]:
+        """
+
+        Get cached metrics collected during the optimization.
+
+        Parameters
+        ----------
+        key : str, optional,
+            the key of the metric to be returned, by default None
+            can be one of "update_time", "dual_update_time", "objective", "objective_grad_norm",
+            if None, return all the cached metrics
+
+        Returns
+        -------
+        List[Dict[str, float]] or List[float],
+            if key is None, return a list of dicts of metrics
+            if key is not None, return a list of metrics
+
+        """
+        if key is None:
+            return list(self.__metrics)
+        assert key in [
+            "update_time",
+            "dual_update_time",
+            "objective",
+            "objective_grad_norm",
+        ], f"""key must be one of "update_time", "dual_update_time", "objective", "objective_grad_norm" or None, but got {key}"""
+        return [metric[key] for metric in self.__metrics]
 
     def extra_repr_keys(self) -> List[str]:
         return [
