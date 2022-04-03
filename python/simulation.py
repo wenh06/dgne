@@ -93,8 +93,6 @@ def setup_simulation(
             - multiplier_edge_set:
                 sequence of 2-tuples of int,
                 of variable length
-            - market_capacities: sequence of float,
-                of length num_markets
             - market_P: sequence of float,
                 of length num_markets
             - market_D: sequence of float,
@@ -104,6 +102,8 @@ def setup_simulation(
                 with items "pi", "b",
                 "pi" is a sequence of int, of length num_companies
                 "b" is a sequence of np.ndarray, of length num_companies
+            - verbose: int,
+                verbosity level for printing the simulation parameters
 
     Returns
     -------
@@ -115,6 +115,8 @@ def setup_simulation(
     Most parameters of the game have default values in this function
 
     """
+
+    verbose = kwargs.get("verbose", 0)
 
     # assertions
     assert market_capacities.shape == (num_markets,)
@@ -216,18 +218,14 @@ def setup_simulation(
     ###############################################################################
 
     ###############################################################################
-    # Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
-    market_capacities = kwargs.get(
-        "market_capacities", RNG.uniform(0.5, 1, num_markets)
-    )
-    ###############################################################################
-
-    ###############################################################################
     # The market price is taken as a linear function P − DAx
     # known as a linear inverse demand function in economics
     # P, D randomly drawn from [2, 4] and [0.5, 1]
     market_P = kwargs.get("market_P", RNG.uniform(2, 4, num_markets))
     market_D = kwargs.get("market_D", RNG.uniform(0.5, 1, num_markets))
+    if verbose >= 1:
+        print(f"market_P (shape {market_P.shape}): {market_P}")
+        print(f"market_D (shape {market_D.shape}): {market_D}")
 
     def _martket_price(supply: np.ndarray) -> np.ndarray:
         """
@@ -360,6 +358,8 @@ def setup_simulation(
             pi=[RNG.integers(1, 8, endpoint=True) for _ in range(num_companies)],
             b=[RNG.uniform(0.1, 0.6, n) for n in num_company_market_connection],
         )
+    if verbose >= 1:
+        print(f"product_cost_parameters: {product_cost_parameters}")
 
     def product_cost(
         pi: int,
@@ -394,32 +394,32 @@ def setup_simulation(
 
     companies = [
         Company(
-            company_id=i,
+            company_id=company_id,
             ccs=Rectangle(
                 # Player i has a local constraint 0 < x_i < Θ_i
                 # and each component of Θ_i is randomly drawn from [1, 1.5].
                 np.zeros(
-                    (num_company_market_connection[i]),
+                    (num_company_market_connection[company_id]),
                 ),
-                RNG.uniform(1, 1.5, num_company_market_connection[i]),
+                RNG.uniform(1, 1.5, num_company_market_connection[company_id]),
             ),
-            ceoff=company_parameters["ceoff"][i],
+            ceoff=company_parameters["ceoff"][company_id],
             offset=market_capacities,
-            market_price=partial(market_price, i),
-            market_price_jac=partial(market_price_jac, i),
+            market_price=partial(market_price, company_id),
+            market_price_jac=partial(market_price_jac, company_id),
             product_cost=partial(
                 product_cost,
-                product_cost_parameters["pi"][i],
-                product_cost_parameters["b"][i],
+                product_cost_parameters["pi"][company_id],
+                product_cost_parameters["b"][company_id],
             ),
             product_cost_grad=partial(
                 product_cost_grad,
-                product_cost_parameters["pi"][i],
-                product_cost_parameters["b"][i],
+                product_cost_parameters["pi"][company_id],
+                product_cost_parameters["b"][company_id],
             ),
             step_sizes=step_sizes,
         )
-        for i in range(num_companies)
+        for company_id in range(num_companies)
     ]
 
     networked_cournot_game = NetworkedCournotGame(
