@@ -124,10 +124,8 @@ class Agent(ReprMixin):
         prev_var = dict(
             x=self._decision.copy(),
             z=self._aux_var.copy(),
-            lam=None,
+            lam=self._multiplier.copy(),
         )
-        if self.alpha is not None:
-            prev_var["lam"] = self._multiplier.copy()
         self.__cache.append(prev_var)
         self.__metrics = deque()
 
