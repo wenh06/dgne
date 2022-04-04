@@ -401,7 +401,7 @@ def setup_simulation(
     companies = [
         Company(
             company_id=company_id,
-            ccs=Rectangle(
+            feasible_set=Rectangle(
                 # Player i has a local constraint 0 < x_i < Θ_i
                 # and each component of Θ_i is randomly drawn from [1, 1.5].
                 np.zeros(

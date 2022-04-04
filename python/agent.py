@@ -32,7 +32,7 @@ class Agent(ReprMixin):
     def __init__(
         self,
         agent_id: int,
-        ccs: CCS,
+        feasible_set: CCS,
         ceoff: np.ndarray,
         offset: np.ndarray,
         constraint_type: int,
@@ -48,8 +48,9 @@ class Agent(ReprMixin):
         ----------
         agent_id : int,
             agent id
-        ccs : CCS,
-            closed convex set, of dimension n
+        feasible_set : CCS,
+            closed convex set, of dimension n,
+            the feasible set (region) of the agent's decision variable
         ceoff : np.ndarray,
             coefficient of the agent linear constraint,
             of shape (m, n)
@@ -88,7 +89,7 @@ class Agent(ReprMixin):
 
         """
         self.agent_id = agent_id
-        self.ccs = ccs
+        self._feasible_set = feasible_set
         self._coeff = np.array(ceoff)  # A_i, shape (m, n_i)
         self._offset = np.array(offset)  # b_i, shape (m,)
         self._objective = objective
@@ -116,7 +117,7 @@ class Agent(ReprMixin):
         assert self.dim == self.A.shape[1]  # n_i
         assert self.A.shape[0] == self.b.shape[0]  # m
 
-        self._decision = self.ccs.random_point()  # x_i
+        self._decision = self.omega.random_point()  # x_i
         # self._multiplier = self._multiplier_orthant.random_point()  # lambda_i
         self._multiplier = np.zeros((self._multiplier_orthant.dim,))
         # self._aux_var = self._es.random_point()  # z_i
@@ -172,7 +173,7 @@ class Agent(ReprMixin):
             for i, other in enumerate(others)
             if other.agent_id in multiplier_graph.get_neighbors(self.agent_id)
         ]
-        self._decision = self.ccs.projection(
+        self._decision = self.omega.projection(
             self.extrapolated_decision
             - self.tau
             * self._objective_grad(self.x, self.decision_profile(others, True))
@@ -286,6 +287,10 @@ class Agent(ReprMixin):
     @property
     def b(self) -> np.ndarray:
         return self._offset
+
+    @property
+    def omega(self) -> np.ndarray:
+        return self._feasible_set
 
     @property
     def prev_decision(self) -> np.ndarray:

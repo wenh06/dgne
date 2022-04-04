@@ -423,39 +423,7 @@ def setup_minimal_example(
     companies = [
         Company(
             company_id=company_id,
-            ccs=Rectangle(
-                # Player i has a local constraint 0 < x_i < Θ_i
-                # and each component of Θ_i is randomly drawn from [1, 1.5].
-                np.zeros(
-                    (num_company_market_connection[company_id]),
-                ),
-                2
-                * np.ones(
-                    (num_company_market_connection[company_id]),
-                ),
-            ),
-            ceoff=company_parameters["ceoff"][company_id],
-            offset=market_capacities,
-            market_price=partial(market_price, company_id),
-            market_price_jac=partial(market_price_jac, company_id),
-            product_cost=partial(
-                product_cost,
-                product_cost_parameters["pi"][company_id],
-                product_cost_parameters["b"][company_id],
-            ),
-            product_cost_grad=partial(
-                product_cost_grad,
-                product_cost_parameters["pi"][company_id],
-                product_cost_parameters["b"][company_id],
-            ),
-            step_sizes=step_sizes,
-        )
-        for company_id in range(num_companies)
-    ]
-    companies = [
-        Company(
-            company_id=company_id,
-            ccs=Rectangle(
+            feasible_set=Rectangle(
                 # Player i has a local constraint 0 < x_i < Θ_i
                 np.zeros(
                     (num_company_market_connection[company_id]),
