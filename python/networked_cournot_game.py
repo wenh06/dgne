@@ -216,6 +216,7 @@ class NetworkedCournotGame(ReprMixin):
                         self.interference_graph,
                         self.multiplier_graph,
                     )
+                for company in self.companies:
                     # dual update
                     company.dual_update(
                         [c for c in self.companies if c.agent_id != company.agent_id],
