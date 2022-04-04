@@ -146,7 +146,7 @@ def test_minimal_example_homo_mono():
 if __name__ == "__main__":
     test_ccs()
     test_graph()
-    # test_networked_cournot_game()
+    test_networked_cournot_game()
     test_minimal_example()
     test_minimal_example_homo()
     test_minimal_example_homo_mono()
