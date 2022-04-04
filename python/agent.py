@@ -3,7 +3,7 @@
 
 import time
 from collections import deque
-from typing import NoReturn, List, Dict, Union, Callable, Sequence, Optional
+from typing import NoReturn, List, Dict, Union, Callable, Sequence, Optional, Tuple
 from numbers import Real
 
 import numpy as np
@@ -467,6 +467,41 @@ class Agent(ReprMixin):
             "objective_grad_norm",
         ], f"""key must be one of "primal_update_time", "dual_update_time", "objective", "objective_grad_norm" or None, but got {key}"""
         return [metric[key] for metric in self.__metrics]
+
+    def is_convergent(
+        self,
+        keys: Union[str, Sequence[str]] = "objective_grad_norm",
+        func: Callable[[Tuple[np.ndarray, ...]], bool] = lambda a: (
+            a[-max(10, len(a) // 10) :] < 1e-6
+        ).all(),
+    ) -> bool:
+        """
+
+        Check if the optimization process is convergent
+
+        Parameters
+        ----------
+        keys : str or sequence of str, default "objective_grad_norm",
+            the keys of the metrics to be checked,
+            can be one of "x", "objective", "objective_grad_norm",
+        func : function, default lambda a: (a[-max(10, len(a) // 10) :] < 1e-6).all(),
+            the function to check the convergence,
+
+        Returns
+        -------
+        bool,
+            True if convergent, False otherwise
+
+        """
+        if isinstance(keys, str):
+            keys = [keys]
+        values = []
+        for key in keys:
+            if key == "x":
+                values.append(np.array(self.get_cache(key=key)))
+            else:
+                values.append(np.array(self.get_metrics(key=key)))
+        return func(*values)
 
     def extra_repr_keys(self) -> List[str]:
         return [

@@ -2,7 +2,8 @@
 Networked Cournot Game
 """
 
-from typing import NoReturn, Sequence, Callable, Optional, List
+import multiprocessing as mp
+from typing import NoReturn, Sequence, Callable, Optional, List, Union, Tuple
 
 import numpy as np
 
@@ -11,6 +12,7 @@ try:
 except ImportError:
     from tqdm import tqdm
 
+import functional as F
 from agent import Agent
 from ccs import CCS
 from graph import Graph
@@ -153,6 +155,7 @@ class NetworkedCournotGame(ReprMixin):
         multiplier_graph: Graph,
         interference_graph: Graph,
         market_capacities: np.ndarray,
+        run_parallel: bool = False,
     ) -> NoReturn:
         """
 
@@ -166,12 +169,15 @@ class NetworkedCournotGame(ReprMixin):
             the interference graph
         market_capacities: np.ndarray,
             market capacities,
+        run_parallel: bool, default False,
+            whether to run the algorithm in parallel
 
         """
         self._companies = companies
         self._market_capacities = market_capacities
         self._multiplier_graph = multiplier_graph
         self._interference_graph = interference_graph
+        self.run_parallel = run_parallel
 
     @property
     def num_companies(self) -> int:
@@ -197,15 +203,24 @@ class NetworkedCournotGame(ReprMixin):
     def interference_graph(self) -> Graph:
         return self._interference_graph
 
-    def run_simulation(self, num_steps: int) -> NoReturn:
+    def run_simulation(
+        self, num_steps: int, run_parallel: Optional[bool] = None
+    ) -> NoReturn:
         """
 
         Parameters
         ----------
         num_steps: int,
             number of steps to run the simulation
+        run_parallel: bool, optional,
+            whether to run the algorithm in parallel,
+            if specified, overrides the value of self.run_parallel
 
         """
+        rp = run_parallel if run_parallel is not None else self.run_parallel
+        if rp:
+            self._run_simulation_parallel(num_steps)
+            return
         with tqdm(
             range(num_steps), total=num_steps, desc="Running simulation", unit="step"
         ) as pbar:
@@ -224,11 +239,55 @@ class NetworkedCournotGame(ReprMixin):
                         self.multiplier_graph,
                     )
 
+    def _run_simulation_parallel(self, num_steps: int) -> NoReturn:
+        """NOT implemented yet
+
+        Parameters
+        ----------
+        num_steps: int,
+            number of steps to run the simulation
+
+        """
+        raise NotImplementedError
+        with tqdm(
+            range(num_steps), total=num_steps, desc="Running simulation", unit="step"
+        ) as pbar:
+            for i in pbar:
+                pass
+
+    def is_convergent(
+        self,
+        keys: Union[str, Sequence[str]] = "objective_grad_norm",
+        func: Callable[[Tuple[np.ndarray, ...]], bool] = lambda a: (
+            a[-max(10, len(a) // 10) :] < 1e-6
+        ).all(),
+    ) -> bool:
+        """
+
+        Check if the optimization process is convergent
+
+        Parameters
+        ----------
+        keys : str or sequence of str, default "objective_grad_norm",
+            the keys of the metrics to be checked,
+            can be one of "x", "objective", "objective_grad_norm",
+        func : function, default lambda a: (a[-max(10, len(a) // 10) :] < 1e-6).all(),
+            the function to check the convergence,
+
+        Returns
+        -------
+        bool,
+            True if convergent, False otherwise
+
+        """
+        return all([c.is_convergent(keys, func) for c in self.companies])
+
     def extra_repr_keys(self) -> List[str]:
         """ """
         return [
             "num_companies",
             "num_markets",
+            "run_parallel",
         ]
 
     # @property
