@@ -421,8 +421,8 @@ class Agent(ReprMixin):
         Returns
         -------
         List[Dict[str, np.ndarray]] or List[np.ndarray] or List[float],
-            if key is None, return a list of dicts of variable values
-            if key is not None, return a list of variable values
+            if `key` is None, return a list of dicts of variable values;
+            if `key` is not None, return a list of variable values
 
         """
         if key is None:
@@ -454,8 +454,8 @@ class Agent(ReprMixin):
         Returns
         -------
         List[Dict[str, float]] or List[float],
-            if key is None, return a list of dicts of metrics
-            if key is not None, return a list of metrics
+            if `key` is None, return a list of dicts of metrics;
+            if `key` is not None, return a list of metrics
 
         """
         if key is None:

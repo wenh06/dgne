@@ -3,7 +3,7 @@ Networked Cournot Game
 """
 
 import multiprocessing as mp
-from typing import NoReturn, Sequence, Callable, Optional, List, Union, Tuple
+from typing import NoReturn, Sequence, Callable, Optional, List, Union, Tuple, Dict
 
 import numpy as np
 
@@ -143,6 +143,10 @@ class Company(Agent):
         """
         return self._product_cost_grad
 
+    @property
+    def company_id(self) -> int:
+        return self.agent_id
+
 
 class NetworkedCournotGame(ReprMixin):
     """ """
@@ -173,7 +177,7 @@ class NetworkedCournotGame(ReprMixin):
             whether to run the algorithm in parallel
 
         """
-        self._companies = companies
+        self._companies = sorted((c for c in companies), key=lambda c: c.company_id)
         self._market_capacities = market_capacities
         self._multiplier_graph = multiplier_graph
         self._interference_graph = interference_graph
@@ -281,6 +285,118 @@ class NetworkedCournotGame(ReprMixin):
 
         """
         return all([c.is_convergent(keys, func) for c in self.companies])
+
+    @property
+    def x(self) -> np.ndarray:
+        """
+
+        Returns
+        -------
+        np.ndarray,
+            the concatenation of decision vectors of all companies
+
+        """
+        return np.concatenate([c.x for c in self.companies])
+
+    @property
+    def z(self) -> np.ndarray:
+        """
+
+        Returns
+        -------
+        np.ndarray,
+            the concatenation of aux variables of all companies
+
+        """
+        return np.concatenate([c.z for c in self.companies])
+
+    @property
+    def lam(self) -> np.ndarray:
+        """
+
+        Returns
+        -------
+        np.ndarray,
+            the concatenation of lagrange multipliers of all companies
+
+        """
+        return np.concatenate([c.lam for c in self.companies])
+
+    @property
+    def omega(self) -> np.ndarray:
+        return np.concatenate([self.x, self.z, self.lam])
+
+    def get_cache(
+        self,
+        key: Optional[str] = None,
+    ) -> Union[List[Dict[str, np.ndarray]], List[np.ndarray], List[float]]:
+        """
+
+        Get cached sequence of variable values of the optimization process
+
+        Parameters
+        ----------
+        key : str, optional,
+            the key of the variable to be returned, by default None
+            can be one of "x", "z", "lam", "omega",
+            if None, return all the cached variable values
+
+        Returns
+        -------
+        List[Dict[str, np.ndarray]] or List[np.ndarray] or List[float],
+            if `key` is None, return a list of dicts of variable values;
+            if `key` is not None, return a list of variable values
+
+        """
+        if key is not None:
+            assert key in [
+                "x",
+                "z",
+                "lam",
+                "omega",
+            ], f"""key must be one of "x", "z", "lam", "omega" or None, but got {key}"""
+        if key is None:
+            return dict(
+                x=self.get_cache("x"),
+                z=self.get_cache("z"),
+                lam=self.get_cache("lam"),
+                omega=self.get_cache("omega"),
+            )
+        elif key == "omega":
+            cache = [np.concatenate((x, z, lam)) for x, z, lam in zip(self.get_cache("x"), self.get_cache("z"), self.get_cache("lam"))]
+            return cache
+        else:
+            _cache = [c.get_cache(key) for c in self.companies]
+            cache = [np.concatenate([_cache[company_idx][step_idx] for company_idx in range(len(self.companies))])  for step_idx in range(len(_cache[0]))]
+            del _cache
+            return cache
+
+    def get_metrics(self, key: Optional[str] = None) -> Union[Dict[str, np.ndarray], np.ndarray]:
+        """NOT finished yet,
+
+        Computes a set of predefined metrics.
+
+        Parameters
+        ----------
+        key : str, optional,
+            the key of the metric to be returned, by default None
+            can be one of "xxx" (to add),
+            if None, return all the cached metrics
+
+        Returns
+        -------
+        Dict[str, np.ndarray] or np.ndarray,
+            if `key` is None, return a list of dicts of metrics;
+            if `key` is not None, return a list of metrics
+
+        """
+        raise NotImplementedError
+
+    def __getitem__(self, index:int) -> Company:
+        return self.companies[index]
+
+    def __len__(self) -> int:
+        return len(self.companies)
 
     def extra_repr_keys(self) -> List[str]:
         """ """
