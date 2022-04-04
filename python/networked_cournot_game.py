@@ -19,6 +19,12 @@ from graph import Graph
 from utils import ReprMixin
 
 
+__all__ = [
+    "NetworkedCournotGame",
+    "Company",
+]
+
+
 class Company(Agent):
     """ """
 
@@ -200,6 +206,11 @@ class NetworkedCournotGame(ReprMixin):
         return self._market_capacities
 
     @property
+    def r(self) -> np.ndarray:
+        """alias of market_capacities"""
+        return self.market_capacities
+
+    @property
     def multiplier_graph(self) -> Graph:
         return self._multiplier_graph
 
@@ -293,7 +304,8 @@ class NetworkedCournotGame(ReprMixin):
         Returns
         -------
         np.ndarray,
-            the concatenation of decision vectors of all companies
+            the concatenation of decision vectors of all companies,
+            of shape (n,), where n is the total number of company-market connections
 
         """
         return np.concatenate([c.x for c in self.companies])
@@ -305,7 +317,8 @@ class NetworkedCournotGame(ReprMixin):
         Returns
         -------
         np.ndarray,
-            the concatenation of aux variables of all companies
+            the concatenation of aux variables of all companies,
+            of shape (num_markets * num_companies,)
 
         """
         return np.concatenate([c.z for c in self.companies])
@@ -317,10 +330,29 @@ class NetworkedCournotGame(ReprMixin):
         Returns
         -------
         np.ndarray,
-            the concatenation of lagrange multipliers of all companies
+            the concatenation of lagrange multipliers of all companies,
+            of shape (num_markets * num_companies,)
 
         """
         return np.concatenate([c.lam for c in self.companies])
+
+    @property
+    def A(self) -> np.ndarray:
+        """
+
+        Returns
+        -------
+        np.ndarray,
+            the concatenation of the constraint coeff. matrix of all companies,
+            of shape (num_markets, n),
+            where n is the total number of company-market connections
+
+        """
+        return np.concatenate([c.A for c in self.companies], axis=1)
+
+    @property
+    def Ax(self) -> np.ndarray:
+        return self.A @ self.x
 
     @property
     def omega(self) -> np.ndarray:
