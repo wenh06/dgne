@@ -15,7 +15,7 @@ from ccs import (
     NonPositiveOrthant,
 )
 from utils import RNG
-from simulation import run_simulation
+from simulation import setup_simulation, run_simulation
 from minimal_example import (
     setup_minimal_example,
     market_capacities_homo,
@@ -29,6 +29,9 @@ from minimal_example import (
     product_cost_parameters_homo_mono,
     market_company_connections_homo_mono,
 )
+
+
+_ABS_EPS = 1e-5
 
 
 def test_ccs():
@@ -87,12 +90,19 @@ def test_graph():
 
 
 def test_networked_cournot_game():
-    run_simulation(1000)
+    ncg = setup_simulation()
+    ncg.run_simulation(500)
+    # assert ncg.is_convergent()
+
+    print("test_networked_cournot_game passed!")
 
 
 def test_minimal_example():
     me = setup_minimal_example(verbose=2)
-    me.run_simulation(500)
+    me.run_simulation(1000)
+    assert me.is_convergent()
+
+    print("test_minimal_example passed!")
 
 
 def test_minimal_example_homo():
@@ -103,8 +113,11 @@ def test_minimal_example_homo():
         product_cost_parameters=product_cost_parameters_homo,
         verbose=2,
     )
-    me_homo.run_simulation(500)
+    me_homo.run_simulation(1000)
     c1, c2 = me_homo.companies
+    assert me_homo.is_convergent()
+
+    print("test_minimal_example_homo passed!")
 
 
 def test_minimal_example_homo_mono():
@@ -117,7 +130,7 @@ def test_minimal_example_homo_mono():
         product_cost_parameters=product_cost_parameters_homo_mono,
         verbose=2,
     )
-    me_homo_mono.run_simulation(500)
+    me_homo_mono.run_simulation(1000)
     c1, c2 = me_homo_mono.companies
     assert 0.6 == pytest.approx(c1.x[0]) == pytest.approx(c2.x[0])
     assert (
@@ -125,12 +138,15 @@ def test_minimal_example_homo_mono():
         == pytest.approx(c1.objective(c1.x, c2.x))
         == pytest.approx(c2.objective(c2.x, c1.x))
     )
+    assert me_homo_mono.is_convergent()
+
+    print("test_minimal_example_homo_mono passed!")
 
 
 if __name__ == "__main__":
     test_ccs()
     test_graph()
-    test_networked_cournot_game()
+    # test_networked_cournot_game()
     test_minimal_example()
     test_minimal_example_homo()
     test_minimal_example_homo_mono()

@@ -1,7 +1,7 @@
 """
 """
 
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Callable
 
 import numpy as np
 
