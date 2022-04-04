@@ -17,7 +17,7 @@ The file [`minimal_example.py`](/python/minimal_example.py) provides some minima
 
 
 ### TODO
-1. implement the `update` and `dual_update` functions as external functions, so that multiprocessing can be used for parallel computation
+1. (Done, but NOT tested) implement the `primal_update` and `dual_update` functions as external functions in [functional.py](/python/functional.py), instead of member methods of the `Agent` class, so that multiprocessing can be used for parallel computation.
 2. add stop criteria for the iteration
 
 
