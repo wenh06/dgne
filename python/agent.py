@@ -97,8 +97,8 @@ class Agent(ReprMixin):
         self.alpha = alpha
         self.__cache_size = cache_size
         assert isinstance(cache_size, int) and (
-            cache_size > 0 or cache_size == -1
-        ), f"cache_size should be a positive integer or -1, but got {cache_size}"
+            cache_size >= 2 or cache_size == -1
+        ), f"cache_size should be at least 2 or be -1, but got {cache_size}"
         if cache_size == -1:
             self.__cache_size = float("inf")
         self.__cache = deque()
@@ -121,6 +121,9 @@ class Agent(ReprMixin):
         self._multiplier = np.zeros((self._multiplier_orthant.dim,))
         # self._aux_var = self._es.random_point()  # z_i
         self._aux_var = np.zeros((self._es.dim,))
+
+        self.__step = 0
+        self.__dual_step = 0
         prev_var = dict(
             x=self._decision.copy(),
             z=self._aux_var.copy(),
@@ -188,6 +191,7 @@ class Agent(ReprMixin):
                 update_time=time.time() - start,
             )
         )
+        self.__step += 1
 
     def dual_update(
         self,
@@ -245,6 +249,7 @@ class Agent(ReprMixin):
         self.__metrics[-1]["objective_grad_norm"] = np.linalg.norm(
             self._objective_grad(self.x, self.decision_profile(others, True))
         )
+        self.__dual_step += 1
 
     @property
     def dim(self) -> int:
@@ -324,6 +329,14 @@ class Agent(ReprMixin):
             return self.lam
         return self.lam + self.alpha * (self.lam - self.prev_lam)
 
+    @property
+    def step(self) -> int:
+        return self.__step
+
+    @property
+    def dual_step(self) -> int:
+        return self.__dual_step
+
     def degree(self, adj_mat: np.ndarray) -> Real:
         """ """
         return adj_mat[self.agent_id, :].sum()
@@ -363,6 +376,23 @@ class Agent(ReprMixin):
         if np.isfinite(self.__cache_size):
             return self.__cache_size
         return -1
+
+    def get_prev_cache(self, key: str, step_diff: int) -> np.ndarray:
+        """
+
+        Get the previous cache of the agent of specified step difference
+
+        Parameters
+        ----------
+        key : str,
+            the key of the cache, can be one of "x", "z", "lam"
+        step_diff : int,
+            the step difference, must be a non-negative integer,
+            and must be less than the cached size
+
+        """
+        assert step_diff >= 0 and step_diff < self.cached_size
+        return self.__cache[-1 - step_diff][key]
 
     def get_cache(
         self,
