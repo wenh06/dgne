@@ -43,7 +43,7 @@ class Company(Agent):
             company id
         feasible_set: CCS,
             closed convex set, of (embeded) dimension n,
-            the feasible set (region) of the agent's decision variable 
+            the feasible set (region) of the agent's decision variable
         coeff: np.ndarray,
             coefficient of the linear constraint,
             of shape (m, n)
@@ -211,8 +211,8 @@ class NetworkedCournotGame(ReprMixin):
         ) as pbar:
             for i in pbar:
                 for company in self.companies:
-                    # update
-                    company.update(
+                    # primal update
+                    company.primal_update(
                         [c for c in self.companies if c.agent_id != company.agent_id],
                         self.interference_graph,
                         self.multiplier_graph,

@@ -84,7 +84,7 @@ class Agent(ReprMixin):
 
         TODO
         ----
-        1. implement the `update` and `dual_update` functions as external functions, so that multiprocessing can be used for parallel computation
+        1. implement the `primal_update` and `dual_update` functions as external functions, so that multiprocessing can be used for parallel computation
         2. add stop criteria for the iteration
 
         """
@@ -133,7 +133,7 @@ class Agent(ReprMixin):
         self.__cache.append(prev_var)
         self.__metrics = deque()
 
-    def update(
+    def primal_update(
         self,
         others: List["Agent"],
         interference_graph: Graph,
@@ -141,7 +141,7 @@ class Agent(ReprMixin):
     ) -> NoReturn:
         """
 
-        the update step of the agent
+        the primal update step of the agent
 
         Parameters
         ----------
@@ -176,7 +176,7 @@ class Agent(ReprMixin):
         self._decision = self.omega.projection(
             self.extrapolated_decision
             - self.tau
-            * self._objective_grad(self.x, self.decision_profile(others, True))
+            * self.objective_grad(self.x, self.decision_profile(others, True))
             - np.matmul(self.A.T, self.lam)
         )
 
@@ -189,7 +189,7 @@ class Agent(ReprMixin):
         )
         self.__metrics.append(
             dict(
-                update_time=time.time() - start,
+                primal_update_time=time.time() - start,
             )
         )
         self.__step += 1
@@ -248,7 +248,7 @@ class Agent(ReprMixin):
             self.x, self.decision_profile(others, True)
         )
         self.__metrics[-1]["objective_grad_norm"] = np.linalg.norm(
-            self._objective_grad(self.x, self.decision_profile(others, True))
+            self.objective_grad(self.x, self.decision_profile(others, True))
         )
         self.__dual_step += 1
 
@@ -448,7 +448,7 @@ class Agent(ReprMixin):
         ----------
         key : str, optional,
             the key of the metric to be returned, by default None
-            can be one of "update_time", "dual_update_time", "objective", "objective_grad_norm",
+            can be one of "primal_update_time", "dual_update_time", "objective", "objective_grad_norm",
             if None, return all the cached metrics
 
         Returns
@@ -461,11 +461,11 @@ class Agent(ReprMixin):
         if key is None:
             return list(self.__metrics)
         assert key in [
-            "update_time",
+            "primalupdate_time",
             "dual_update_time",
             "objective",
             "objective_grad_norm",
-        ], f"""key must be one of "update_time", "dual_update_time", "objective", "objective_grad_norm" or None, but got {key}"""
+        ], f"""key must be one of "primal_update_time", "dual_update_time", "objective", "objective_grad_norm" or None, but got {key}"""
         return [metric[key] for metric in self.__metrics]
 
     def extra_repr_keys(self) -> List[str]:
