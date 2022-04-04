@@ -363,15 +363,30 @@ class NetworkedCournotGame(ReprMixin):
                 omega=self.get_cache("omega"),
             )
         elif key == "omega":
-            cache = [np.concatenate((x, z, lam)) for x, z, lam in zip(self.get_cache("x"), self.get_cache("z"), self.get_cache("lam"))]
+            cache = [
+                np.concatenate((x, z, lam))
+                for x, z, lam in zip(
+                    self.get_cache("x"), self.get_cache("z"), self.get_cache("lam")
+                )
+            ]
             return cache
         else:
             _cache = [c.get_cache(key) for c in self.companies]
-            cache = [np.concatenate([_cache[company_idx][step_idx] for company_idx in range(len(self.companies))])  for step_idx in range(len(_cache[0]))]
+            cache = [
+                np.concatenate(
+                    [
+                        _cache[company_idx][step_idx]
+                        for company_idx in range(len(self.companies))
+                    ]
+                )
+                for step_idx in range(len(_cache[0]))
+            ]
             del _cache
             return cache
 
-    def get_metrics(self, key: Optional[str] = None) -> Union[Dict[str, np.ndarray], np.ndarray]:
+    def get_metrics(
+        self, key: Optional[str] = None
+    ) -> Union[Dict[str, np.ndarray], np.ndarray]:
         """NOT finished yet,
 
         Computes a set of predefined metrics.
@@ -392,7 +407,7 @@ class NetworkedCournotGame(ReprMixin):
         """
         raise NotImplementedError
 
-    def __getitem__(self, index:int) -> Company:
+    def __getitem__(self, index: int) -> Company:
         return self.companies[index]
 
     def __len__(self) -> int:
