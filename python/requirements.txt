@@ -6,5 +6,5 @@ tqdm
 pytest
 Cython
 git+https://github.com/networkx/networkx-metis.git
-black
+black==22.3.0
 flake8
