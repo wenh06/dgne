@@ -2,6 +2,7 @@
 Networked Cournot Game
 """
 
+import time  # noqa: F401
 import multiprocessing as mp  # noqa: F401
 from typing import NoReturn, Sequence, Callable, Optional, List, Union, Tuple, Dict
 
@@ -166,6 +167,7 @@ class NetworkedCournotGame(ReprMixin):
         interference_graph: Graph,
         market_capacities: np.ndarray,
         run_parallel: bool = False,
+        verbose: int = 0,
     ) -> NoReturn:
         """
 
@@ -181,6 +183,8 @@ class NetworkedCournotGame(ReprMixin):
             market capacities,
         run_parallel: bool, default False,
             whether to run the algorithm in parallel
+        verbose: int, default 0,
+            verbosity level
 
         """
         self._companies = sorted((c for c in companies), key=lambda c: c.company_id)
@@ -188,6 +192,7 @@ class NetworkedCournotGame(ReprMixin):
         self._multiplier_graph = multiplier_graph
         self._interference_graph = interference_graph
         self.run_parallel = run_parallel
+        self.verbose = verbose
 
     @property
     def num_companies(self) -> int:
@@ -240,6 +245,7 @@ class NetworkedCournotGame(ReprMixin):
             range(num_steps), total=num_steps, desc="Running simulation", unit="step"
         ) as pbar:
             for i in pbar:
+                start = time.time()
                 for company in self.companies:
                     # primal update
                     company.primal_update(
@@ -253,9 +259,11 @@ class NetworkedCournotGame(ReprMixin):
                         [c for c in self.companies if c.agent_id != company.agent_id],
                         self.multiplier_graph,
                     )
+                if self.verbose > 0:
+                    print(f"step {i} took {1000*(time.time() - start):.4f} ms")
 
     def _run_simulation_parallel(self, num_steps: int) -> NoReturn:
-        """NOT implemented yet
+        """
 
         Parameters
         ----------
@@ -263,12 +271,127 @@ class NetworkedCournotGame(ReprMixin):
             number of steps to run the simulation
 
         """
-        raise NotImplementedError
-        with tqdm(
+        print(f"Running simulation in parallel using {max(1, mp.cpu_count()-2)} cores")
+        with mp.Pool(processes=max(1, mp.cpu_count() - 2)) as pool, tqdm(
             range(num_steps), total=num_steps, desc="Running simulation", unit="step"
         ) as pbar:
             for i in pbar:
-                pass
+                tot_start = time.time()
+                start = time.time()
+                for c in self.companies:
+                    c.add_cache()
+                if self.verbose > 1:
+                    print(
+                        f"caching previous step state variables took {1000*(time.time() - start):.4f} ms"
+                    )
+                # primal update
+                start = time.time()
+                args = [
+                    (
+                        c.agent_id,
+                        c.A,
+                        self.multiplier_graph.adj_mat,
+                        c.x,
+                        c.z,
+                        c.lam,
+                        c.prev_x,
+                        c.prev_z,
+                        c.objective_grad(
+                            c.x,
+                            c.decision_profile(
+                                [
+                                    oc
+                                    for oc in self.companies
+                                    if oc.agent_id != c.agent_id
+                                ],
+                                True,
+                            ),
+                        ),
+                        c.omega,
+                        c.alpha or 0,
+                        c.tau,
+                        c.nu,
+                        [
+                            oc.agent_id
+                            for oc in self.companies
+                            if oc.agent_id != c.agent_id
+                        ],
+                        [oc.lam for oc in self.companies if oc.agent_id != c.agent_id],
+                    )
+                    for c in self.companies
+                ]
+                if self.verbose > 1:
+                    print(
+                        f"preparation of args for primal update took {1000*(time.time() - start):.4f} ms"
+                    )
+                start = time.time()
+                updated_args = pool.starmap(F.primal_update, args)
+                if self.verbose > 1:
+                    print(
+                        f"starmap for primal update took {1000*(time.time() - start):.4f} ms"
+                    )
+                start = time.time()
+                for c, updated_arg in zip(self.companies, updated_args):
+                    c._decision = updated_arg[0]
+                    c._aux_var = updated_arg[1]
+                if self.verbose > 1:
+                    print(
+                        f"unpacking and updating company state variables for primal update took {1000*(time.time() - start):.4f} ms"
+                    )
+                # with mp.Pool(processes=max(1, mp.cpu_count()-2)) as pool:
+                # dual update
+                start = time.time()
+                args = [
+                    (
+                        c.agent_id,
+                        c.A,
+                        c.b,
+                        self.multiplier_graph.adj_mat,
+                        c.x,
+                        c.z,
+                        c.lam,
+                        c.prev_x,
+                        c.prev_z,
+                        c.prev_lam,
+                        c._multiplier_orthant,
+                        c.alpha or 0,
+                        c.sigma,
+                        [
+                            oc.agent_id
+                            for oc in self.companies
+                            if c.agent_id != c.agent_id
+                        ],
+                        [oc.z for oc in self.companies if oc.agent_id != c.agent_id],
+                        [
+                            oc.prev_z
+                            for oc in self.companies
+                            if oc.agent_id != c.agent_id
+                        ],
+                        [oc.lam for oc in self.companies if oc.agent_id != c.agent_id],
+                    )
+                    for c in self.companies
+                ]
+                if self.verbose > 1:
+                    print(
+                        f"preparation of args for dual update took {1000*(time.time() - start):.4f} ms"
+                    )
+                start = time.time()
+                updated_args = pool.starmap(F.dual_update, args)
+                if self.verbose > 1:
+                    print(
+                        f"starmap for dual update took {1000*(time.time() - start):.4f} ms"
+                    )
+                start = time.time()
+                for c, updated_arg in zip(self.companies, updated_args):
+                    c._multiplier = updated_arg
+                if self.verbose > 1:
+                    print(
+                        f"unpacking and updating company state variables for dual update took {1000*(time.time() - start):.4f} ms"
+                    )
+                if self.verbose > 0:
+                    print(
+                        f"total time for step {i} took {1000*(time.time() - tot_start):.4f} ms"
+                    )
 
     def is_convergent(
         self,

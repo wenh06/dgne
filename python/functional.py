@@ -24,21 +24,17 @@ def primal_update(
     lam: np.ndarray,
     prev_x: np.ndarray,
     prev_z: np.ndarray,
-    profile: np.ndarray,
+    objective_grad: np.ndarray,
     feasible_set: CCS,
     alpha: float,
     tau: float,
     nu: float,
     others_agent_id: Sequence[int],
     others_lam: Sequence[np.ndarray],
-    objective_grad: Callable[[np.ndarray, np.ndarray], np.ndarray],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """ """
     x = feasible_set.projection(
-        x
-        + alpha * (x - prev_x)
-        - tau * objective_grad(x, profile)
-        - np.matmul(A.T, lam)
+        x + alpha * (x - prev_x) - tau * objective_grad - np.matmul(A.T, lam)
     )
     z = (
         z
