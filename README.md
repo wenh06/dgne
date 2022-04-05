@@ -13,11 +13,13 @@ The class [`Graph`](/python/graph.py) implements the connected symmetric interfe
 
 The class [`NetworkedCournotGame`](/python/networked_cournot_game.py), along with [simulation.py](/python/simulation.py), implements the networked cournot game described in section 7 of \[[1](#ref1)\].
 
-The file [`minimal_example.py`](/python/minimal_example.py) provides some minimal examples containing networked cournot games consisting of 2 companies and 1 or 2 markets.
+The file [`minimal_example.py`](/python/minimal_example.py) provides some minimal examples containing networked cournot games consisting of 2 companies and 1 or 2 market(s).
+
+The file [`functional.py`](/python/functional.py) re-implements the `primal update` and `dual update` of the agents (players), so as to facilitate the usage of `multiprocessing` for parallel (or distributed) computation.
 
 
 ### TODO
-1. (Done, but NOT tested) implement the `primal_update` and `dual_update` functions as external functions in [functional.py](/python/functional.py), instead of member methods of the `Agent` class, so that multiprocessing can be used for parallel computation.
+1. (Done) ~~implement the `primal_update` and `dual_update` functions as external functions in [functional.py](/python/functional.py), instead of member methods of the `Agent` class, so that multiprocessing can be used for parallel computation.~~
 2. add stop criteria for the iteration
 
 
