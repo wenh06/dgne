@@ -1,13 +1,13 @@
 """
 """
 
-from typing import Union, Optional, List, Tuple, Sequence, NoReturn, Any
+from typing import Union, Optional, Tuple, Sequence, NoReturn, Any
 
 import numpy as np
 import pandas as pd
 import networkx as nx
 from networkx import algorithms as NXA
-import nxmetis
+import nxmetis  # noqa: F401
 from scipy.sparse import spmatrix, load_npz
 
 

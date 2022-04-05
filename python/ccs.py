@@ -374,7 +374,7 @@ class HyperPlane(Polyhedron):
 
 
 class HalfSpace(Polyhedron):
-    """
+    r"""
 
     halfspace is the set of points in R^n defined by one inequality,
     or equivalently by a normal vector and an offset:

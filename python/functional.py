@@ -57,6 +57,7 @@ def primal_update(
 def dual_update(
     agent_id: int,
     A: np.ndarray,
+    b: np.ndarray,
     W: np.ndarray,
     x: np.ndarray,
     z: np.ndarray,
@@ -101,6 +102,7 @@ def agent_update(
     dual: bool,
     agent_id: int,
     A: np.ndarray,
+    b: np.ndarray,
     W: np.ndarray,
     x: np.ndarray,
     z: np.ndarray,

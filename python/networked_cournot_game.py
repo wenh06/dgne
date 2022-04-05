@@ -2,7 +2,7 @@
 Networked Cournot Game
 """
 
-import multiprocessing as mp
+import multiprocessing as mp  # noqa: F401
 from typing import NoReturn, Sequence, Callable, Optional, List, Union, Tuple, Dict
 
 import numpy as np
@@ -12,7 +12,7 @@ try:
 except ImportError:
     from tqdm import tqdm
 
-import functional as F
+import functional as F  # noqa: F401
 from agent import Agent
 from ccs import CCS
 from graph import Graph

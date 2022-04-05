@@ -7,16 +7,16 @@ import pytest
 import numpy as np
 
 from graph import Graph, is_connected
-from agent import Agent
-from ccs import (
+from agent import Agent  # noqa: F401
+from ccs import (  # noqa: F401
     Rectangle,
     L2Ball,
     NonNegativeOrthant,
     NonPositiveOrthant,
 )
 from utils import RNG
-from simulation import setup_simulation, run_simulation
-from minimal_example import (
+from simulation import setup_simulation, run_simulation  # noqa: F401
+from minimal_example import (  # noqa: F401
     setup_minimal_example,
     market_capacities_homo,
     market_D_homo,
@@ -31,7 +31,7 @@ from minimal_example import (
 )
 
 
-_ABS_EPS = 1e-5
+_ABS_EPS = 1e-5  # noqa: F401
 
 
 def test_ccs():

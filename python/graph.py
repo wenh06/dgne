@@ -10,9 +10,9 @@ import pandas as pd
 from scipy import sparse
 
 try:
-    from tqdm.auto import tqdm, trange
-except:
-    from tqdm import tqdm, trange
+    from tqdm.auto import tqdm, trange  # noqa: F401
+except Exception:
+    from tqdm import tqdm, trange  # noqa: F401
 
 from utils import ReprMixin, RNG
 
@@ -74,7 +74,7 @@ class Graph(ReprMixin):
         assert self._adj_mat.shape == (
             self._num_agents,
             self._num_agents,
-        ), f"adj_mat must be of shape ({num_vertices}, {num_vertices}), but got {self._adj_mat.shape}."
+        ), f"adj_mat must be of shape ({self.num_vertices}, {self.num_vertices}), but got {self._adj_mat.shape}."
         assert (
             sparse.find(self._adj_mat.T != self._adj_mat)[0].size == 0
         ), "The adjacency matrix must be symmetric."
@@ -87,10 +87,10 @@ class Graph(ReprMixin):
         assert self._edge_set.shape[1] == 2, "edge_set must be a 2-column matrix."
         assert (
             self._edge_set.max() < self._num_agents
-        ), f"edge_set must be a matrix with entries in [0, {num_vertices}), but got {self._edge_set.max()}."
+        ), f"edge_set must be a matrix with entries in [0, {self.num_vertices}), but got {self._edge_set.max()}."
         assert (
             self._edge_set.min() >= 0
-        ), f"edge_set must be a matrix with entries in [0, {num_vertices}), but got {self._edge_set.min()}."
+        ), f"edge_set must be a matrix with entries in [0, {self.num_vertices}), but got {self._edge_set.min()}."
         assert is_connected(self), "The graph should be connected."
 
     def __simplify_edge_set(self) -> NoReturn:

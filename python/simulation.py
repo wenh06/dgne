@@ -3,7 +3,7 @@
 
 import argparse
 from functools import partial
-from typing import NoReturn, List, Tuple, Sequence, Optional
+from typing import NoReturn, Sequence, Optional
 
 import numpy as np
 
@@ -465,7 +465,7 @@ def get_parser() -> dict:
         "--num-steps",
         type=int,
         default=10000,
-        help=f"number of simulation steps",
+        help="number of simulation steps",
         dest="num_steps",
     )
 

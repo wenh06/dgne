@@ -7,7 +7,6 @@ from typing import NoReturn, List, Dict, Union, Callable, Sequence, Optional, Tu
 from numbers import Real
 
 import numpy as np
-from scipy import sparse
 
 from utils import ReprMixin
 from graph import Graph

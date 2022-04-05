@@ -6,14 +6,13 @@ with 2 companies and 2 markets, and full company-market connection.
 """
 
 from functools import partial
-from typing import NoReturn, List, Tuple, Sequence, Optional
+from typing import Sequence, Optional
 
 import numpy as np
 
 from graph import Graph
 from ccs import Rectangle
 from networked_cournot_game import Company, NetworkedCournotGame
-from utils import RNG
 
 
 ###############################################################################
