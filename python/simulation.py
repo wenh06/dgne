@@ -102,6 +102,8 @@ def setup_simulation(
                 with items "pi", "b",
                 "pi" is a sequence of int, of length num_companies
                 "b" is a sequence of np.ndarray, of length num_companies
+            - run_parallel, default False,
+                whether to run the simulation in parallel
             - verbose: int, default 0,
                 verbosity level for printing the simulation parameters
 
@@ -433,22 +435,34 @@ def setup_simulation(
         multiplier_graph=multiplier_graph,
         interference_graph=interference_graph,
         market_capacities=market_capacities,
+        run_parallel=kwargs.get("run_parallel", False),
+        verbose=verbose,
     )
 
     return networked_cournot_game
 
 
-def run_simulation(num_steps: int) -> NoReturn:
+def run_simulation(
+    num_steps: int, run_parallel: bool = False, verbose: int = 0
+) -> NoReturn:
     """
 
     Parameters
-        ----------
-        num_steps: int,
-            number of steps to run the simulation
+    ----------
+    num_steps: int,
+        number of steps to run the simulation
+    run_parallel: bool, default False,
+        whether to run the simulation in parallel
+    verbose: int, default 0,
+        verbosity level
 
     """
     networked_cournot_game = setup_simulation(
-        _num_companies, _num_markets, _market_company_connections
+        _num_companies,
+        _num_markets,
+        _market_company_connections,
+        run_parallel=run_parallel,
+        verbose=verbose,
     )
     networked_cournot_game.run_simulation(num_steps)
 
@@ -468,6 +482,21 @@ def get_parser() -> dict:
         help="number of simulation steps",
         dest="num_steps",
     )
+    parser.add_argument(
+        "-p",
+        "--parallel",
+        action="store_true",
+        help="run the simulation in parallel",
+        dest="run_parallel",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        type=int,
+        default=0,
+        help="verbosity level",
+        dest="verbose",
+    )
 
     args = vars(parser.parse_args())
 
@@ -476,4 +505,4 @@ def get_parser() -> dict:
 
 if __name__ == "__main__":
     args = get_parser()
-    run_simulation(args["num_steps"])
+    run_simulation(**args)

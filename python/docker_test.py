@@ -97,6 +97,14 @@ def test_networked_cournot_game():
     print("test_networked_cournot_game passed!")
 
 
+def test_parallel_running():
+    ncg = setup_simulation(run_parallel=True)
+    ncg.run_simulation(500)
+    # assert ncg.is_convergent()
+
+    print("test_parallel_running passed!")
+
+
 def test_minimal_example():
     me = setup_minimal_example(verbose=2)
     me.run_simulation(1000)
@@ -147,6 +155,7 @@ if __name__ == "__main__":
     test_ccs()
     test_graph()
     test_networked_cournot_game()
+    test_parallel_running()
     test_minimal_example()
     test_minimal_example_homo()
     test_minimal_example_homo_mono()
