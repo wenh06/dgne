@@ -1,5 +1,8 @@
 # An operator splitting approach for distributed generalized Nash equilibria computation
 
+![pytest](https://github.com/wenh06/dgne/actions/workflows/run-pytest.yml/badge.svg)
+![format_check](https://github.com/wenh06/dgne/actions/workflows/check-formatting.yml/badge.svg)
+
 A re-implementation of the paper \[[1](#ref1)\] (currently python, TODO matlab)
 
 
@@ -16,6 +19,8 @@ The class [`NetworkedCournotGame`](/python/networked_cournot_game.py), along wit
 The file [`minimal_example.py`](/python/minimal_example.py) provides some minimal examples containing networked cournot games consisting of 2 companies and 1 or 2 market(s).
 
 The file [`functional.py`](/python/functional.py) re-implements the `primal update` and `dual update` of the agents (players), so as to facilitate the usage of `multiprocessing` for parallel (or distributed) computation.
+
+The [test file](/python/docker_test.py), used along with [GitHub Pytest Action](https://github.com/wenh06/dgne/actions/workflows/run-pytest.yml) provides automatic test for the classes and algorithms.
 
 
 ### TODO
