@@ -8,7 +8,7 @@ A re-implementation of the paper \[[1](#ref1)\] (currently python, TODO matlab)
 
 ## [Python re-implementation](/python/)
 
-Agents are implemented as a class in [python/agent.py](/python/agent.py), conducting update and dual update. Variables and statistics (time consumption, value of objective function, norm of the gradient of the objective function, etc.) during the optimization process are maintained in this class as well.
+Agents are implemented as a class in [agent.py](/python/agent.py), conducting update and dual update. Variables and statistics (time consumption, value of objective function, norm of the gradient of the objective function, etc.) during the optimization process are maintained in this class as well.
 
 The class [`CCS`](/python/ccs.py) (abbreviation for closed convex set) is mainly used to do projection to this closed convex set in the algorithm. `Rectangle`, `NonNegativeOrthant`, `NonPositiveOrthant` are the most frequently used closed convex sets.
 
