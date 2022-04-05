@@ -131,6 +131,7 @@ class Agent(ReprMixin):
         )
         self.__cache.append(prev_var)
         self.__metrics = deque()
+        self.__timer = time.time()
 
     def primal_update(
         self,
@@ -152,16 +153,10 @@ class Agent(ReprMixin):
             the multiplier graph
 
         """
-        self.__cache.append(
-            dict(
-                x=self.x.copy(),
-                z=self.z.copy(),
-                lam=self.lam.copy(),
-            )
-        )
+        self.add_cache()
         if self.cached_size > self.__cache_size:
             self.__cache.popleft()
-        start = time.time()
+        self.start_timing()
         interference_inds = [
             i
             for i, other in enumerate(others)
@@ -188,7 +183,7 @@ class Agent(ReprMixin):
         )
         self.__metrics.append(
             dict(
-                primal_update_time=time.time() - start,
+                primal_update_time=self.stop_timing(),
             )
         )
         self.__step += 1
@@ -210,7 +205,7 @@ class Agent(ReprMixin):
             the multiplier graph
 
         """
-        start = time.time()
+        self.start_timing()
         multiplier_inds = [
             i
             for i, other in enumerate(others)
@@ -242,7 +237,7 @@ class Agent(ReprMixin):
                 )
             )
         )
-        self.__metrics[-1]["dual_update_time"] = time.time() - start
+        self.__metrics[-1]["dual_update_time"] = self.stop_timing()
         self.__metrics[-1]["objective"] = self.objective(
             self.x, self.decision_profile(others, True)
         )
@@ -250,6 +245,23 @@ class Agent(ReprMixin):
             self.objective_grad(self.x, self.decision_profile(others, True))
         )
         self.__dual_step += 1
+
+    def add_cache(self) -> NoReturn:
+        self.__cache.append(
+            dict(
+                x=self.x.copy(),
+                z=self.z.copy(),
+                lam=self.lam.copy(),
+            )
+        )
+
+    def start_timing(self) -> NoReturn:
+        self.__timer = time.time()
+
+    def stop_timing(self) -> float:
+        time_elapsed = time.time() - self.__timer
+        self.__timer = time.time()
+        return time_elapsed
 
     @property
     def dim(self) -> int:
