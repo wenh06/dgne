@@ -1,9 +1,10 @@
 """
 """
 
-from typing import Sequence, Tuple, Callable
+from typing import Sequence, Tuple
 
 import numpy as np
+from deprecated import deprecated
 
 from ccs import CCS
 
@@ -11,7 +12,6 @@ from ccs import CCS
 __all__ = [
     "primal_update",
     "dual_update",
-    "agent_update",
 ]
 
 
@@ -94,6 +94,7 @@ def dual_update(
     return lam
 
 
+@deprecated(reason="Use `primal_update` and `dual_update` separately", action="error")
 def agent_update(
     dual: bool,
     agent_id: int,
@@ -106,7 +107,7 @@ def agent_update(
     prev_x: np.ndarray,
     prev_z: np.ndarray,
     prev_lam: np.ndarray,
-    profile: np.ndarray,
+    objective_grad: np.ndarray,
     feasible_set: CCS,
     multiplier_orthant: CCS,
     alpha: float,
@@ -117,7 +118,6 @@ def agent_update(
     others_z: Sequence[np.ndarray],
     others_prev_z: Sequence[np.ndarray],
     others_lam: Sequence[np.ndarray],
-    objective_grad: Callable[[np.ndarray, np.ndarray], np.ndarray],
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """ """
     if dual:  # dual update
@@ -146,10 +146,7 @@ def agent_update(
         )
     else:  # primal update
         x = feasible_set.projection(
-            x
-            + alpha * (x - prev_x)
-            - tau * objective_grad(x, profile)
-            - np.matmul(A.T, lam)
+            x + alpha * (x - prev_x) - tau * objective_grad - np.matmul(A.T, lam)
         )
         z = (
             z

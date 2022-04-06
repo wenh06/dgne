@@ -8,3 +8,4 @@ Cython
 git+https://github.com/networkx/networkx-metis.git
 black==22.3.0
 flake8
+deprecated
