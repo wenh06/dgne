@@ -7,6 +7,7 @@ import multiprocessing as mp  # noqa: F401
 from typing import NoReturn, Sequence, Callable, Optional, List, Union, Tuple, Dict
 
 import numpy as np
+import scipy
 
 try:
     from tqdm.auto import tqdm
@@ -481,9 +482,40 @@ class NetworkedCournotGame(ReprMixin):
     def omega(self) -> np.ndarray:
         return np.concatenate([self.x, self.z, self.lam])
 
+    @property
+    def b(self) -> np.ndarray:
+        return np.concatenate([c.b for c in self.companies])
+
+    @property
+    def Lambda(self) -> np.ndarray:
+        return scipy.linalg.block_diag(*[c.A for c in self.companies])
+
+    @property
+    def L(self) -> np.ndarray:
+        return np.kron(self.multiplier_graph.L.toarray(), np.eye(self.num_markets))
+
+    @property
+    def tau(self) -> np.ndarray:
+        return scipy.linalg.block_diag(*[c.tau * np.eye(c.dim) for c in self.companies])
+
+    @property
+    def sigma(self) -> np.ndarray:
+        return scipy.linalg.block_diag(
+            *[c.sigma * np.eye(c.dim) for c in self.companies]
+        )
+
+    @property
+    def nu(self) -> np.ndarray:
+        return scipy.linalg.block_diag(*[c.nu * np.eye(c.dim) for c in self.companies])
+
+    @property
+    def proj_x(self) -> np.ndarray:
+        return np.concatenate([c.omega.projection(c.x) for c in self.companies])
+
     def get_cache(
         self,
         key: Optional[str] = None,
+        step_idx: Optional[int] = None,
     ) -> Union[List[Dict[str, np.ndarray]], List[np.ndarray], List[float]]:
         """
 
@@ -495,6 +527,8 @@ class NetworkedCournotGame(ReprMixin):
             the key of the variable to be returned, by default None
             can be one of "x", "z", "lam", "omega",
             if None, return all the cached variable values
+        step_idx : int, optional,
+            the index of the step to be returned, by default None
 
         Returns
         -------
@@ -512,55 +546,117 @@ class NetworkedCournotGame(ReprMixin):
             ], f"""key must be one of "x", "z", "lam", "omega" or None, but got {key}"""
         if key is None:
             return dict(
-                x=self.get_cache("x"),
-                z=self.get_cache("z"),
-                lam=self.get_cache("lam"),
-                omega=self.get_cache("omega"),
+                x=self.get_cache("x", step_idx),
+                z=self.get_cache("z", step_idx),
+                lam=self.get_cache("lam", step_idx),
+                omega=self.get_cache("omega", step_idx),
             )
         elif key == "omega":
             cache = [
                 np.concatenate((x, z, lam))
                 for x, z, lam in zip(
-                    self.get_cache("x"), self.get_cache("z"), self.get_cache("lam")
+                    self.get_cache("x", step_idx),
+                    self.get_cache("z", step_idx),
+                    self.get_cache("lam", step_idx),
                 )
             ]
             return cache
         else:
             _cache = [c.get_cache(key) for c in self.companies]
-            cache = [
-                np.concatenate(
+            if step_idx is None:
+                cache = [
+                    np.concatenate(
+                        [
+                            _cache[company_idx][step_idx]
+                            for company_idx in range(len(self.companies))
+                        ]
+                    )
+                    for step_idx in range(len(_cache[0]))
+                ]
+            else:
+                cache = np.concatenate(
                     [
                         _cache[company_idx][step_idx]
                         for company_idx in range(len(self.companies))
                     ]
                 )
-                for step_idx in range(len(_cache[0]))
-            ]
             del _cache
             return cache
 
     def get_metrics(
-        self, key: Optional[str] = None
+        self, keys: Optional[Union[str, Sequence[str]]] = None, log_scale: bool = False
     ) -> Union[Dict[str, np.ndarray], np.ndarray]:
-        """NOT finished yet,
+        """
 
-        Computes a set of predefined metrics.
+        Computes a set of predefined metrics,
+        as given in the last paragraph of section 7 of the paper
 
         Parameters
         ----------
-        key : str, optional,
-            the key of the metric to be returned, by default None
-            can be one of "xxx" (to add),
+        keys : str or sequence of str, optional,
+            the keys of the metrics to be returned, by default None
+            can be some of the following keys:
+            - x_rel_dist:
+                relative distance between x and its optimal value
+            - omega_diff_norm:
+                the norm of the difference between the current and the previous value of omega
+            - L_lam_norm:
+                the norm of self.L @ self.lam
+            - lam_dot_residual:
+                self.lam multiplied by the residual of the market capacity constraints
             if None, return all the cached metrics
+        log_scale : bool, default False,
+            whether to return the metrics in log scale
 
         Returns
         -------
         Dict[str, np.ndarray] or np.ndarray,
-            if `key` is None, return a list of dicts of metrics;
-            if `key` is not None, return a list of metrics
+            if `keys` is None or contains multiple keys,
+            returns a dicts of metrics;
+            if `keys` contains one key,
+            returns the corresponding metric.
 
         """
-        raise NotImplementedError
+        cache = self.get_cache()
+        metrics = {}
+        if keys is None:
+            keys = ["x_rel_dist", "omega_diff_norm", "L_lam_norm", "lam_dot_residual"]
+        elif isinstance(keys, str):
+            keys = [keys]
+        if "x_rel_dist" in keys:
+            metrics["x_rel_dist"] = np.linalg.norm(
+                cache["x"][:-1] - self.x, axis=-1
+            ) / np.linalg.norm(self.x)
+        if "omega_diff_norm" in keys:
+            metrics["omega_diff_norm"] = np.linalg.norm(np.diff(cache["omega"]), axis=0)
+        if "L_lam_norm" in keys:
+            metrics["L_lam_norm"] = np.array(
+                [
+                    np.linalg.norm(self.L @ cache["lam"][idx])
+                    for idx in range(len(cache["lam"]))
+                ]
+            )
+        if "lam_dot_residual" in keys:
+            metrics["lam_dot_residual"] = np.array(
+                [
+                    np.dot(
+                        np.kron(
+                            np.ones((1, self.num_companies)), np.eye(self.num_markets)
+                        )
+                        @ lam,
+                        (self.A @ x - self.r),
+                    )
+                    for lam, x in zip(cache["lam"], cache["x"])
+                ]
+            )
+
+        if log_scale:
+            for key in metrics:
+                metrics[key] = np.log(metrics[key] + np.finfo(metrics[key].dtype).eps)
+
+        if len(keys) == 1:
+            return metrics[keys[0]]
+        return metrics
 
     def __getitem__(self, index: int) -> Company:
         return self.companies[index]
@@ -575,12 +671,6 @@ class NetworkedCournotGame(ReprMixin):
             "num_markets",
             "run_parallel",
         ]
-
-    # @property
-    # def market_price(self) -> Callable[[np.ndarray], np.ndarray]:
-    #     """
-    #     """
-    #     return self._companies[0]._market_price.func
 
 
 def linear_inverse_demand(

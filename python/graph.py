@@ -136,6 +136,10 @@ class Graph(ReprMixin):
         return self.deg_mat - self._adj_mat
 
     @property
+    def L(self) -> sparse.spmatrix:
+        return self.Laplacian
+
+    @property
     def is_weighted(self) -> bool:
         return sum(
             [len(sparse.find(self.adj_mat == value)[0]) for value in [1]]
