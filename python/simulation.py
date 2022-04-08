@@ -188,7 +188,7 @@ def setup_simulation(
 
     company_parameters = {
         "ceoff": [],
-        "offset": [],
+        # "offset": [],
     }
     for i in range(num_companies):
         coeff = np.zeros((num_markets, num_company_market_connection[i]))
@@ -197,11 +197,11 @@ def setup_simulation(
         ][:, 0]
         for j, m in enumerate(current_markets):
             coeff[m, j] = 1
-        offset = np.zeros((num_markets,))
+        # offset = np.zeros((num_markets,))
         company_parameters["ceoff"].append(coeff)
-        company_parameters["offset"].append(offset)
+        # company_parameters["offset"].append(offset)
     total_coeff = np.concatenate(company_parameters["ceoff"], axis=1)
-    total_offset = sum(company_parameters["offset"])
+    # total_offset = sum(company_parameters["offset"])
     ###############################################################################
 
     ###############################################################################
@@ -412,7 +412,7 @@ def setup_simulation(
                 RNG.uniform(1, 1.5, num_company_market_connection[company_id]),
             ),
             ceoff=company_parameters["ceoff"][company_id],
-            offset=market_capacities,
+            total_offset=market_capacities,
             market_price=partial(market_price, company_id),
             market_price_jac=partial(market_price_jac, company_id),
             product_cost=partial(

@@ -33,7 +33,7 @@ class Agent(ReprMixin):
         agent_id: int,
         feasible_set: CCS,
         ceoff: np.ndarray,
-        offset: np.ndarray,
+        total_offset: np.ndarray,
         constraint_type: int,
         objective: Callable[[np.ndarray, np.ndarray], float],
         objective_grad: Callable[[np.ndarray, np.ndarray], np.ndarray],
@@ -53,8 +53,8 @@ class Agent(ReprMixin):
         ceoff : np.ndarray,
             coefficient of the agent linear constraint,
             of shape (m, n)
-        offset : np.ndarray,
-            offset of the agent linear constraint,
+        total_offset : np.ndarray,
+            total (sum) offset of all agents' linear constraint,
             of shape (m,)
         constraint_type : int,
             type of the constraint,
@@ -90,7 +90,8 @@ class Agent(ReprMixin):
         self.agent_id = agent_id
         self._feasible_set = feasible_set
         self._coeff = np.array(ceoff)  # A_i, shape (m, n_i)
-        self._offset = np.array(offset)  # b_i, shape (m,)
+        self._total_offset = np.array(total_offset)  # b, shape (m,)
+        self._offset = self._total_offset.copy()  # b_i, shape (m,)
         self._objective = objective
         self._objective_grad = objective_grad
         self.tau, self.nu, self.sigma = step_sizes
@@ -157,6 +158,7 @@ class Agent(ReprMixin):
         if self.cached_size > self.__cache_size:
             self.__cache.popleft()
         self.start_timing()
+        self.update_offset(others)
         interference_inds = [
             i
             for i, other in enumerate(others)
@@ -246,6 +248,21 @@ class Agent(ReprMixin):
         )
         self.__dual_step += 1
 
+    def update_offset(self, others: List["Agent"]) -> NoReturn:
+        r"""
+
+        Update the offset of the linear constraint of the agent via
+            .. math::
+                \mathbf{b}_i = \mathbf{b} - \sum_{j\neq i} A_j \cdot \mathbf{x}_j
+
+        Parameters
+        ----------
+        others : list of Agent,
+            list of other agents
+
+        """
+        self._offset = self._total_offset - sum([c.Ax for c in others])
+
     def add_cache(self) -> NoReturn:
         self.__cache.append(
             dict(
@@ -294,6 +311,10 @@ class Agent(ReprMixin):
     @property
     def A(self) -> np.ndarray:
         return self._coeff
+
+    @property
+    def Ax(self) -> np.ndarray:
+        return np.matmul(self.A, self.x)
 
     @property
     def b(self) -> np.ndarray:
@@ -502,6 +523,8 @@ class Agent(ReprMixin):
         -------
         bool,
             True if convergent, False otherwise
+
+        TODO: use KKT conditions to check the convergence
 
         """
         if isinstance(keys, str):

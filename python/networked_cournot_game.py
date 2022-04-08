@@ -37,7 +37,7 @@ class Company(Agent):
         company_id: int,
         feasible_set: CCS,
         ceoff: np.ndarray,
-        offset: np.ndarray,
+        total_offset: np.ndarray,
         market_price: Callable[[np.ndarray, np.ndarray], np.ndarray],
         market_price_jac: Callable[[np.ndarray, np.ndarray], np.ndarray],
         product_cost: Callable[[np.ndarray], float],
@@ -57,8 +57,8 @@ class Company(Agent):
         coeff: np.ndarray,
             coefficient of the linear constraint,
             of shape (m, n)
-        offset: np.ndarray,
-            offset of the linear constraint,
+        total_offset : np.ndarray,
+            total (sum) offset of all agents' linear constraint,
             of shape (m,)
         market_price: Callable[[np.ndarray, np.ndarray], np.ndarray],
             market price function,
@@ -84,7 +84,7 @@ class Company(Agent):
             company_id,
             feasible_set,
             ceoff,
-            offset,
+            total_offset,
             2,  # constraint type 2: offset - ceoff @ x >= 0
             None,
             None,
@@ -287,6 +287,10 @@ class NetworkedCournotGame(ReprMixin):
                     )
                 # primal update
                 start = time.time()
+                # update offset of the linear constraints for all companies
+                for c in self.companies:
+                    c.update_offset([oc for oc in self.companies if oc.agent_id != c.agent_id])
+                # collect arguments for the parallel computation
                 args = [
                     (
                         c.agent_id,
@@ -326,12 +330,14 @@ class NetworkedCournotGame(ReprMixin):
                         f"preparation of args for primal update took {1000*(time.time() - start):.4f} ms"
                     )
                 start = time.time()
+                # parallel computation
                 updated_args = pool.starmap(F.primal_update, args)
                 if self.verbose > 1:
                     print(
                         f"starmap for primal update took {1000*(time.time() - start):.4f} ms"
                     )
                 start = time.time()
+                # update primal variables
                 for c, updated_arg in zip(self.companies, updated_args):
                     c._decision = updated_arg[0]
                     c._aux_var = updated_arg[1]
@@ -339,9 +345,9 @@ class NetworkedCournotGame(ReprMixin):
                     print(
                         f"unpacking and updating company state variables for primal update took {1000*(time.time() - start):.4f} ms"
                     )
-                # with mp.Pool(processes=max(1, mp.cpu_count()-2)) as pool:
                 # dual update
                 start = time.time()
+                # collect arguments for the parallel computation
                 args = [
                     (
                         c.agent_id,
@@ -377,12 +383,14 @@ class NetworkedCournotGame(ReprMixin):
                         f"preparation of args for dual update took {1000*(time.time() - start):.4f} ms"
                     )
                 start = time.time()
+                # parallel computation
                 updated_args = pool.starmap(F.dual_update, args)
                 if self.verbose > 1:
                     print(
                         f"starmap for dual update took {1000*(time.time() - start):.4f} ms"
                     )
                 start = time.time()
+                # update dual variables
                 for c, updated_arg in zip(self.companies, updated_args):
                     c._multiplier = updated_arg
                 if self.verbose > 1:
