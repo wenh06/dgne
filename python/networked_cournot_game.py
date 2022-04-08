@@ -289,7 +289,9 @@ class NetworkedCournotGame(ReprMixin):
                 start = time.time()
                 # update offset of the linear constraints for all companies
                 for c in self.companies:
-                    c.update_offset([oc for oc in self.companies if oc.agent_id != c.agent_id])
+                    c.update_offset(
+                        [oc for oc in self.companies if oc.agent_id != c.agent_id]
+                    )
                 # collect arguments for the parallel computation
                 args = [
                     (

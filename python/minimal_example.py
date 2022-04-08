@@ -332,7 +332,9 @@ def setup_minimal_example(
             the jacobbian of the market price function `_market_price`
 
         """
-        return -np.diag(market_D) * ((market_P - market_D * supply) > 0).astype(int).reshape(-1, 1)
+        return -np.diag(market_D) * ((market_P - market_D * supply) > 0).astype(
+            int
+        ).reshape(-1, 1)
 
     def market_price_jac(
         company_id: int,

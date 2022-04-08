@@ -250,7 +250,7 @@ def setup_simulation(
             the market price vector
 
         """
-        return market_P - market_D * supply
+        return np.maximum(0, market_P - market_D * supply)
 
     def market_price(
         company_id: int,
@@ -312,7 +312,9 @@ def setup_simulation(
         np.ndarray,
             the jacobbian of the market price function `_market_price`
         """
-        return -np.diag(market_D)
+        return -np.diag(market_D) * ((market_P - market_D * supply) > 0).astype(
+            int
+        ).reshape(-1, 1)
 
     def market_price_jac(
         company_id: int,
