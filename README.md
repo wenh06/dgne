@@ -25,7 +25,8 @@ The [test file](/python/docker_test.py), used along with [GitHub Pytest Action](
 
 ### TODO
 1. (Done) ~~implement the `primal_update` and `dual_update` functions as external functions in [functional.py](/python/functional.py), instead of member methods of the `Agent` class, so that multiprocessing can be used for parallel computation.~~
-2. add stop criteria for the iteration
+2. add stop criteria for the iteration.
+3. acceleration using [`JAX`](https://jax.readthedocs.io/en/latest/jax-101/01-jax-basics.html) or [`numba`](https://numba.pydata.org/).
 
 
 ## [Matlab re-implementation](/matlab/)
