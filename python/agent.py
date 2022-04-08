@@ -158,7 +158,7 @@ class Agent(ReprMixin):
         if self.cached_size > self.__cache_size:
             self.__cache.popleft()
         self.start_timing()
-        self.update_offset(others)
+        # self.update_offset(others)
         interference_inds = [
             i
             for i, other in enumerate(others)
@@ -248,20 +248,20 @@ class Agent(ReprMixin):
         )
         self.__dual_step += 1
 
-    def update_offset(self, others: List["Agent"]) -> NoReturn:
-        r"""
+    # def update_offset(self, others: List["Agent"]) -> NoReturn:
+    #     r"""
 
-        Update the offset of the linear constraint of the agent via
-            .. math::
-                \mathbf{b}_i = \mathbf{b} - \sum_{j\neq i} A_j \cdot \mathbf{x}_j
+    #     Update the offset of the linear constraint of the agent via
+    #         .. math::
+    #             \mathbf{b}_i = \mathbf{b} - \sum_{j\neq i} A_j \cdot \mathbf{x}_j
 
-        Parameters
-        ----------
-        others : list of Agent,
-            list of other agents
+    #     Parameters
+    #     ----------
+    #     others : list of Agent,
+    #         list of other agents
 
-        """
-        self._offset = self._total_offset - sum([c.Ax for c in others])
+    #     """
+    #     self._offset = self._total_offset - sum([c.Ax for c in others])
 
     def add_cache(self) -> NoReturn:
         self.__cache.append(
