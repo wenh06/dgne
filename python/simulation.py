@@ -51,7 +51,7 @@ _market_company_connections = (
 
 ###############################################################################
 # Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
-_market_capacities = RNG.uniform(0.5, 1, _num_markets)
+_market_capacities = RNG.uniform(0.5, 1, _num_markets) * 10
 ###############################################################################
 
 

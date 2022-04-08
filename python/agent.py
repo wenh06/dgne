@@ -104,9 +104,10 @@ class Agent(ReprMixin):
             self.__cache_size = float("inf")
         self.__cache = deque()
 
-        if constraint_type == 1:
+        self.constraint_type = constraint_type
+        if self.constraint_type == 1:
             self._multiplier_orthant = NonNegativeOrthant(self.b.shape[0])
-        elif constraint_type == 2:
+        elif self.constraint_type == 2:
             self._multiplier_orthant = NonPositiveOrthant(self.b.shape[0])
         else:
             raise ValueError(
@@ -536,6 +537,28 @@ class Agent(ReprMixin):
             else:
                 values.append(np.array(self.get_metrics(key=key)))
         return func(*values)
+
+    def KKT(self, others: List["Agent"], eps: float = 1e-8) -> bool:
+        """ """
+        # condition on x
+        if (
+            np.abs(
+                self.objective_grad(self.x, self.decision_profile(others, True))
+                - np.matmul(self.A.T, self.lam)
+            )
+            > eps
+        ).any():
+            return False
+        # condition on lam
+        if (np.abs(np.dot(self.lam, self.Ax - self.b)) > eps).any():
+            return False
+        if self.constraint_type == 1:
+            if ((self.b - self.Ax) > 0).any():
+                return False
+        elif self.constraint_type == 2:
+            if ((self.b - self.Ax) < 0).any():
+                return False
+        return True
 
     def extra_repr_keys(self) -> List[str]:
         return [
