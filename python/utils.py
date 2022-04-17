@@ -2,8 +2,9 @@
 """
 
 import re
+import time
 from functools import wraps
-from typing import Any, MutableMapping, Optional, List, Callable, NoReturn
+from typing import Any, MutableMapping, Optional, List, Callable, NoReturn, Tuple
 
 import numpy as np
 
@@ -12,6 +13,7 @@ __all__ = [
     "DEFAULTS",
     "set_seed",
     "ReprMixin",
+    "Timer",
 ]
 
 
@@ -117,7 +119,7 @@ class CFG(dict):
 
 
 DEFAULTS = CFG()
-DEFAULTS.SEED = 42
+DEFAULTS.SEED = 1
 DEFAULTS.RNG = np.random.default_rng(seed=DEFAULTS.SEED)
 
 
@@ -234,3 +236,41 @@ def add_docstring(doc: str, mode: str = "replace") -> Callable:
         return wrapper
 
     return decorator
+
+
+class Timer:
+    """ """
+
+    __name__ = "Timer"
+
+    def __init__(self, name: Optional[str] = None, verbose: int = 0) -> NoReturn:
+        """ """
+        self.name = name or "default timer"
+        self.verbose = verbose
+
+    def __enter__(self) -> "Timer":
+        self.timers = {self.name: time.perf_counter()}
+        self.ends = {self.name: 0.0}
+        return self
+
+    def __exit__(self, *args) -> NoReturn:
+        for k in self.timers:
+            self.stop_timer(k)
+            self.timers[k] = self.ends[k] - self.timers[k]
+
+    def add_timer(self, name: str) -> NoReturn:
+        self.timers[name] = time.perf_counter()
+        self.ends[name] = 0
+
+    def stop_timer(self, name: str):
+        if self.ends[name] == 0:
+            self.ends[name] = time.perf_counter()
+            if self.verbose >= 1:
+                time_cost, unit = self._simplify(self.ends[name] - self.timers[name])
+                print(f"{name} took {time_cost:.4f} {unit}")
+
+    def _simplify(self, time_cost: float) -> Tuple[float, str]:
+        """ """
+        if time_cost <= 0.1:
+            return 1000 * time_cost, "ms"
+        return time_cost, "s"
