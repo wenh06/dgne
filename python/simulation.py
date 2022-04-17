@@ -10,7 +10,7 @@ import numpy as np
 from graph import Graph
 from ccs import Rectangle
 from networked_cournot_game import Company, NetworkedCournotGame
-from utils import DEFAULTS
+from utils import DEFAULTS, set_seed
 
 
 __all__ = [
@@ -49,19 +49,15 @@ _market_company_connections = (
 # fmt: on
 ###############################################################################
 
-###############################################################################
-# Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
-_market_capacities = DEFAULTS.RNG.uniform(0.5, 1, _num_markets) * 10
-###############################################################################
-
 
 def setup_simulation(
     num_companies: int = _num_companies,
     num_markets: int = _num_markets,
     market_company_connections: np.ndarray = _market_company_connections,
-    market_capacities: np.ndarray = _market_capacities,
+    market_capacities: Optional[np.ndarray] = None,
     step_sizes: Sequence[float] = (0.03, 0.2, 0.03),
     alpha: Optional[float] = None,
+    seed: Optional[int] = None,
     **kwargs: dict,
 ) -> NetworkedCournotGame:
     """
@@ -78,15 +74,18 @@ def setup_simulation(
         market-company connection matrix,
         of shape (num_connections, 2),
         each element is a pair of market and company indices
-    market_capacities: np.ndarray,
+    market_capacities: np.ndarray, optional,
         market capacities,
         of shape (num_markets,),
+        defaults to random samplings from `RNG.uniform(0.5, 1)`
     step_sizes: sequence of float,
         3-tuples of step sizes for x, z, and lam, respectively,
         namely tau, nu, and sigma, respectively
     alpha: float, optional,
         factor for the extrapolation of the variables (x, z, lambda)
         if alpha is None, then the extrapolation is disabled
+    seed: int, optional,
+        seed for the random number generator
     kwargs: dict,
         additional keyword arguments,
         for changing the parameters of the game, including:
@@ -119,6 +118,14 @@ def setup_simulation(
     """
 
     verbose = kwargs.get("verbose", 0)
+
+    if seed is not None:
+        prev_seed = DEFAULTS.SEED
+        set_seed(seed)
+
+    if market_capacities is None:
+        # Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
+        market_capacities = DEFAULTS.RNG.uniform(0.5, 1, _num_markets) * 10
 
     # assertions
     assert market_capacities.shape == (num_markets,)
@@ -447,11 +454,17 @@ def setup_simulation(
         verbose=verbose,
     )
 
+    if seed is not None:
+        set_seed(prev_seed)
+
     return networked_cournot_game
 
 
 def run_simulation(
-    num_steps: int, run_parallel: bool = False, verbose: int = 0
+    num_steps: int,
+    run_parallel: bool = False,
+    seed: Optional[int] = None,
+    verbose: int = 0,
 ) -> NoReturn:
     """
 
@@ -461,6 +474,8 @@ def run_simulation(
         number of steps to run the simulation
     run_parallel: bool, default False,
         whether to run the simulation in parallel
+    seed: int, optional,
+        seed for the random number generator
     verbose: int, default 0,
         verbosity level
 
@@ -470,6 +485,7 @@ def run_simulation(
         _num_markets,
         _market_company_connections,
         run_parallel=run_parallel,
+        seed=seed,
         verbose=verbose,
     )
     networked_cournot_game.run_simulation(num_steps)

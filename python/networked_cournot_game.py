@@ -638,7 +638,9 @@ class NetworkedCournotGame(ReprMixin):
                 cache["x"][:-1] - self.x, axis=-1
             ) / np.linalg.norm(self.x)
         if "omega_diff_norm" in keys:
-            metrics["omega_diff_norm"] = np.linalg.norm(np.diff(cache["omega"]), axis=0)
+            metrics["omega_diff_norm"] = np.linalg.norm(
+                np.diff(cache["omega"], axis=0), axis=1
+            )
         if "L_lam_norm" in keys:
             metrics["L_lam_norm"] = np.array(
                 [
