@@ -40,6 +40,7 @@ class Agent(ReprMixin):
         step_sizes: Sequence[float] = [0.1, 0.1, 0.1],
         alpha: Optional[float] = None,
         cache_size: int = -1,
+        random_init: bool = True,
     ) -> NoReturn:
         """
 
@@ -74,6 +75,9 @@ class Agent(ReprMixin):
         cache_size: int, default -1,
             size of the cache for the variables (x, lambda),
             shoule be a positive integer, or -1 for unlimited cache size
+        random_init: bool, default True,
+            whether to initialize the variables (z, lambda) randomly or by zeros,
+            note that init of x is always done randomly
 
 
         NOTE
@@ -119,10 +123,12 @@ class Agent(ReprMixin):
         assert self.A.shape[0] == self.b.shape[0]  # m
 
         self._decision = self.omega.random_point()  # x_i
-        # self._multiplier = self._multiplier_orthant.random_point()  # lambda_i
-        self._multiplier = np.zeros((self._multiplier_orthant.dim,))
-        # self._aux_var = self._es.random_point()  # z_i
-        self._aux_var = np.zeros((self._es.dim,))
+        if random_init:
+            self._multiplier = self._multiplier_orthant.random_point()  # lambda_i
+            self._aux_var = self._es.random_point()  # z_i
+        else:
+            self._multiplier = np.zeros((self._multiplier_orthant.dim,))
+            self._aux_var = np.zeros((self._es.dim,))
 
         self.__step = 0
         self.__dual_step = 0
