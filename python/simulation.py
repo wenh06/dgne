@@ -10,7 +10,7 @@ import numpy as np
 from graph import Graph
 from ccs import Rectangle
 from networked_cournot_game import Company, NetworkedCournotGame
-from utils import RNG
+from utils import DEFAULTS
 
 
 __all__ = [
@@ -51,7 +51,7 @@ _market_company_connections = (
 
 ###############################################################################
 # Market M_j has a maximal capacity of r_j randomly drawn from [0.5, 1].
-_market_capacities = RNG.uniform(0.5, 1, _num_markets) * 10
+_market_capacities = DEFAULTS.RNG.uniform(0.5, 1, _num_markets) * 10
 ###############################################################################
 
 
@@ -227,8 +227,8 @@ def setup_simulation(
     # The market price is taken as a linear function P − DAx
     # known as a linear inverse demand function in economics
     # P, D randomly drawn from [2, 4] and [0.5, 1]
-    market_P = kwargs.get("market_P", RNG.uniform(2, 4, num_markets))
-    market_D = kwargs.get("market_D", RNG.uniform(0.5, 1, num_markets))
+    market_P = kwargs.get("market_P", DEFAULTS.RNG.uniform(2, 4, num_markets))
+    market_D = kwargs.get("market_D", DEFAULTS.RNG.uniform(0.5, 1, num_markets))
     if verbose >= 1:
         print(f"market_P (shape {market_P.shape}): {market_P}")
         print(f"market_D (shape {market_D.shape}): {market_D}")
@@ -367,8 +367,12 @@ def setup_simulation(
     product_cost_parameters = kwargs.get("product_cost_parameters", None)
     if product_cost_parameters is None:
         product_cost_parameters = dict(
-            pi=[RNG.integers(1, 8, endpoint=True) for _ in range(num_companies)],
-            b=[RNG.uniform(0.1, 0.6, n) for n in num_company_market_connection],
+            pi=[
+                DEFAULTS.RNG.integers(1, 8, endpoint=True) for _ in range(num_companies)
+            ],
+            b=[
+                DEFAULTS.RNG.uniform(0.1, 0.6, n) for n in num_company_market_connection
+            ],
         )
     if verbose >= 1:
         print(f"product_cost_parameters: {product_cost_parameters}")
@@ -413,7 +417,7 @@ def setup_simulation(
                 np.zeros(
                     (num_company_market_connection[company_id]),
                 ),
-                RNG.uniform(1, 1.5, num_company_market_connection[company_id]),
+                DEFAULTS.RNG.uniform(1, 1.5, num_company_market_connection[company_id]),
             ),
             ceoff=company_parameters["ceoff"][company_id],
             total_offset=market_capacities,

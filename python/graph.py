@@ -14,7 +14,7 @@ try:
 except Exception:
     from tqdm import tqdm, trange  # noqa: F401
 
-from utils import ReprMixin, RNG
+from utils import ReprMixin, DEFAULTS
 
 
 __all__ = [
@@ -178,11 +178,11 @@ class Graph(ReprMixin):
                         np.array(
                             [
                                 [i, j]
-                                for j in RNG.choice(
+                                for j in DEFAULTS.RNG.choice(
                                     range(i + 1, num_vertices),
                                     min(
                                         num_vertices - i - 1,
-                                        RNG.integers(low, high, endpoint=True),
+                                        DEFAULTS.RNG.integers(low, high, endpoint=True),
                                     ),
                                     replace=False,
                                 )
@@ -229,7 +229,10 @@ class Graph(ReprMixin):
         return cls.load(filepath)
 
     def random_weights(
-        self, generator: Callable[[int], np.ndarray] = partial(RNG.uniform, 0.0, 1.0)
+        self,
+        generator: Callable[[int], np.ndarray] = partial(
+            DEFAULTS.RNG.uniform, 0.0, 1.0
+        ),
     ) -> NoReturn:
         """ """
         self.assign_weights(weights=generator(self.num_edges))

@@ -37,6 +37,7 @@ class BipartiteGraph(nx.Graph):
             (names) of the column nodes
         edges: sequence of tuples of str, optional,
             edges of the graph
+
         """
         super().__init__(incoming_graph_data)
         if row_nodes is not None:
@@ -143,6 +144,7 @@ class BipartiteGraph(nx.Graph):
         Returns:
         --------
         bg: BipartiteGraph,
+
         """
         _arr = np.array(arr)
         assert _arr.ndim == 2
@@ -173,6 +175,7 @@ class BipartiteGraph(nx.Graph):
         Returns:
         --------
         bg: BipartiteGraph,
+
         """
         row_names = [f"row_{item}" for item in df.index]
         col_names = [f"col_{item}" for item in df.columns]
@@ -196,6 +199,7 @@ class BipartiteGraph(nx.Graph):
         Returns:
         --------
         bg: BipartiteGraph,
+
         """
         if isinstance(ssm, str):
             _ssm = load_npz(ssm)
@@ -228,6 +232,7 @@ class BipartiteGraph(nx.Graph):
         Returns:
         --------
         df: DataFrame,
+
         """
         df = pd.DataFrame(np.zeros(shape=self.shape)).astype(int)
         df.index = self.row_nodes

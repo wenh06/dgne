@@ -14,7 +14,7 @@ from ccs import (  # noqa: F401
     NonNegativeOrthant,
     NonPositiveOrthant,
 )
-from utils import RNG
+from utils import DEFAULTS
 from simulation import setup_simulation, run_simulation  # noqa: F401
 from minimal_example import (  # noqa: F401
     setup_minimal_example,
@@ -83,7 +83,7 @@ def test_graph():
     assert all(
         [4 <= len(g.get_neighbors(vertex_id)) for vertex_id in range(g.num_vertices)]
     )
-    g.random_weights(generator=partial(RNG.uniform, 1, 4))
+    g.random_weights(generator=partial(DEFAULTS.RNG.uniform, 1, 4))
     assert g.is_weighted is True
 
     print("test_graph passed!")

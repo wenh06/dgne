@@ -3,21 +3,122 @@
 
 import re
 from functools import wraps
-from typing import List, Callable, NoReturn
+from typing import Any, MutableMapping, Optional, List, Callable, NoReturn
 
 import numpy as np
 
 
 __all__ = [
-    "SEED",
-    "RNG",
+    "DEFAULTS",
     "set_seed",
     "ReprMixin",
 ]
 
 
-SEED = 42
-RNG = np.random.default_rng(seed=SEED)
+class CFG(dict):
+    """
+
+    this class is created in order to renew the `update` method,
+    to fit the hierarchical structure of configurations
+
+    Examples
+    --------
+    >>> c = CFG(hehe={"a":1,"b":2})
+    >>> c.update(hehe={"a":-1})
+    >>> c
+    {'hehe': {'a': -1, 'b': 2}}
+    >>> c.__update__(hehe={"a":-10})
+    >>> c
+    {'hehe': {'a': -10}}
+
+    """
+
+    __name__ = "CFG"
+
+    def __init__(self, *args, **kwargs) -> NoReturn:
+        """ """
+        if len(args) > 1:
+            raise TypeError(f"expected at most 1 arguments, got {len(args)}")
+        elif len(args) == 1:
+            d = args[0]
+            assert isinstance(d, MutableMapping)
+        else:
+            d = {}
+        if kwargs:
+            d.update(**kwargs)
+        for k, v in d.items():
+            try:
+                setattr(self, k, v)
+            except Exception:
+                dict.__setitem__(self, k, v)
+        # Class attributes
+        exclude_fields = ["update", "pop"]
+        for k in self.__class__.__dict__:
+            if (
+                not (k.startswith("__") and k.endswith("__"))
+                and k not in exclude_fields
+            ):
+                setattr(self, k, getattr(self, k))
+
+    def __setattr__(self, name: str, value: Any) -> NoReturn:
+        if isinstance(value, (list, tuple)):
+            value = [self.__class__(x) if isinstance(x, dict) else x for x in value]
+        elif isinstance(value, dict) and not isinstance(value, self.__class__):
+            value = self.__class__(value)
+        super().__setattr__(name, value)
+        super().__setitem__(name, value)
+
+    __setitem__ = __setattr__
+
+    def update(
+        self, new_cfg: Optional[MutableMapping] = None, **kwargs: Any
+    ) -> NoReturn:
+        """
+
+        the new hierarchical update method
+
+        Parameters
+        ----------
+        new_cfg : MutableMapping, optional
+            the new configuration, by default None
+        kwargs : Any, optional
+            key value pairs, by default None
+
+        """
+        _new_cfg = new_cfg or CFG()
+        if len(kwargs) > 0:  # avoid RecursionError
+            _new_cfg.update(kwargs)
+        for k in _new_cfg:
+            # if _new_cfg[k].__class__.__name__ in ["dict", "EasyDict", "CFG"] and k in self:
+            if isinstance(_new_cfg[k], MutableMapping) and k in self:
+                self[k].update(_new_cfg[k])
+            else:
+                try:
+                    setattr(self, k, _new_cfg[k])
+                except Exception:
+                    dict.__setitem__(self, k, _new_cfg[k])
+
+    def pop(self, key: str, default: Optional[Any] = None) -> Any:
+        """
+
+        the updated pop method
+
+        Parameters
+        ----------
+        key : str
+            the key to pop
+        default : Any, optional
+            the default value, by default None
+
+        """
+        if key in self:
+            delattr(self, key)
+        return super().pop(key, default)
+
+
+DEFAULTS = CFG()
+DEFAULTS.SEED = 42
+DEFAULTS.RNG = np.random.default_rng(seed=DEFAULTS.SEED)
 
 
 def set_seed(seed: int) -> NoReturn:
@@ -31,9 +132,9 @@ def set_seed(seed: int) -> NoReturn:
 
     """
 
-    global RNG, SEED
-    SEED = seed
-    RNG = np.random.default_rng(seed=seed)
+    global DEFAULTS
+    DEFAULTS.SEED = seed
+    DEFAULTS.RNG = np.random.default_rng(seed=seed)
 
 
 def default_class_repr(c: object, align: str = "center", depth: int = 1) -> str:

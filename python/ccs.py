@@ -9,7 +9,7 @@ from numbers import Real
 import numpy as np
 from scipy.spatial import ConvexHull as _ConvexHull
 
-from utils import ReprMixin, RNG, add_docstring
+from utils import ReprMixin, DEFAULTS, add_docstring
 
 
 __all__ = [
@@ -135,7 +135,7 @@ class EuclideanSpace(CCS):
         if isinstance(bounds, Real):
             bounds = (-abs(bounds), abs(bounds))
         assert len(bounds) == 2 and bounds[0] < bounds[1]
-        return RNG.uniform(bounds[0], bounds[1], self.embedded_dim)
+        return DEFAULTS.RNG.uniform(bounds[0], bounds[1], self.embedded_dim)
 
 
 class NonNegativeOrthant(CCS):
@@ -190,7 +190,7 @@ class NonNegativeOrthant(CCS):
     def random_point(self, bound: Real = 10) -> np.ndarray:
         """ """
         assert bound > 0
-        return RNG.uniform(0, bound, self.embedded_dim)
+        return DEFAULTS.RNG.uniform(0, bound, self.embedded_dim)
 
 
 class NonPositiveOrthant(CCS):
@@ -245,7 +245,7 @@ class NonPositiveOrthant(CCS):
     def random_point(self, bound: Real = -10) -> np.ndarray:
         """ """
         assert bound < 0
-        return RNG.uniform(bound, 0, self.embedded_dim)
+        return DEFAULTS.RNG.uniform(bound, 0, self.embedded_dim)
 
 
 class Polyhedron(CCS):
@@ -370,7 +370,7 @@ class HyperPlane(Polyhedron):
 
     def random_point(self) -> np.ndarray:
         """ """
-        return self.projection(RNG.uniform(-10, 10, self.embedded_dim))
+        return self.projection(DEFAULTS.RNG.uniform(-10, 10, self.embedded_dim))
 
 
 class HalfSpace(Polyhedron):
@@ -412,7 +412,10 @@ class HalfSpace(Polyhedron):
 
     def random_point(self) -> np.ndarray:
         """ """
-        return self._hyperplane.random_point() + RNG.uniform(-10, 0) * self._normal_vec
+        return (
+            self._hyperplane.random_point()
+            + DEFAULTS.RNG.uniform(-10, 0) * self._normal_vec
+        )
 
 
 class Rectangle(Polyhedron):
@@ -469,7 +472,7 @@ class Rectangle(Polyhedron):
 
     def random_point(self) -> np.ndarray:
         """ """
-        return RNG.uniform(self._lower_bounds, self._upper_bounds)
+        return DEFAULTS.RNG.uniform(self._lower_bounds, self._upper_bounds)
 
     @property
     def lower_bounds(self) -> np.ndarray:
@@ -531,7 +534,7 @@ class LpBall(CCS):
         """ """
         bound = self.radius / np.power(self.embedded_dim, 1 / self.p)
         return self.projection(
-            self.center + RNG.uniform(-bound, bound, self.embedded_dim)
+            self.center + DEFAULTS.RNG.uniform(-bound, bound, self.embedded_dim)
         )
 
     def extra_repr_keys(self) -> List[str]:
