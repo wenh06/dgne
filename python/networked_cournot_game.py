@@ -2,7 +2,6 @@
 Networked Cournot Game
 """
 
-import time  # noqa: F401
 import multiprocessing as mp  # noqa: F401
 from typing import NoReturn, Sequence, Callable, Optional, List, Union, Tuple, Dict
 
@@ -18,7 +17,7 @@ import functional as F  # noqa: F401
 from agent import Agent
 from ccs import CCS
 from graph import Graph
-from utils import ReprMixin
+from utils import ReprMixin, Timer
 
 
 __all__ = [
@@ -44,6 +43,8 @@ class Company(Agent):
         product_cost_grad: Callable[[np.ndarray], np.ndarray],
         step_sizes: Sequence[float] = [0.1, 0.1, 0.1],
         alpha: Optional[float] = None,
+        cache_size: int = -1,
+        random_init: bool = True,
     ) -> NoReturn:
         """
 
@@ -78,6 +79,12 @@ class Company(Agent):
             namely tau, nu, and sigma, respectively
         alpha: float, optional,
             factor for the extrapolation of the variables (x, z, lambda)
+        cache_size: int, default -1,
+            size of the cache for the variables (x, lambda),
+            shoule be a positive integer, or -1 for unlimited cache size
+        random_init: bool, default True,
+            whether to initialize the variables (z, lambda) randomly or by zeros,
+            note that init of x is always done randomly
 
         """
         super().__init__(
@@ -90,6 +97,8 @@ class Company(Agent):
             None,
             step_sizes,
             alpha,
+            cache_size,
+            random_init,
         )
         self._market_price = market_price
         self._market_price_jac = market_price_jac
@@ -246,22 +255,28 @@ class NetworkedCournotGame(ReprMixin):
             range(num_steps), total=num_steps, desc="Running simulation", unit="step"
         ) as pbar:
             for i in pbar:
-                start = time.time()
-                for company in self.companies:
-                    # primal update
-                    company.primal_update(
-                        [c for c in self.companies if c.agent_id != company.agent_id],
-                        self.interference_graph,
-                        self.multiplier_graph,
-                    )
-                for company in self.companies:
-                    # dual update
-                    company.dual_update(
-                        [c for c in self.companies if c.agent_id != company.agent_id],
-                        self.multiplier_graph,
-                    )
-                if self.verbose > 0:
-                    print(f"step {i} took {1000*(time.time() - start):.4f} ms")
+                with Timer(f"step {i}", verbose=self.verbose) as timer:
+                    for company in self.companies:
+                        # primal update
+                        company.primal_update(
+                            [
+                                c
+                                for c in self.companies
+                                if c.agent_id != company.agent_id
+                            ],
+                            self.interference_graph,
+                            self.multiplier_graph,
+                        )
+                    for company in self.companies:
+                        # dual update
+                        company.dual_update(
+                            [
+                                c
+                                for c in self.companies
+                                if c.agent_id != company.agent_id
+                            ],
+                            self.multiplier_graph,
+                        )
 
     def _run_simulation_parallel(self, num_steps: int) -> NoReturn:
         """
@@ -277,131 +292,128 @@ class NetworkedCournotGame(ReprMixin):
             range(num_steps), total=num_steps, desc="Running simulation", unit="step"
         ) as pbar:
             for i in pbar:
-                tot_start = time.time()
-                start = time.time()
-                for c in self.companies:
-                    c.add_cache()
-                if self.verbose > 1:
-                    print(
-                        f"caching previous step state variables took {1000*(time.time() - start):.4f} ms"
-                    )
-                # primal update
-                start = time.time()
-                # update offset of the linear constraints for all companies
-                # for c in self.companies:
-                #     c.update_offset(
-                #         [oc for oc in self.companies if oc.agent_id != c.agent_id]
-                #     )
-                # collect arguments for the parallel computation
-                args = [
-                    (
-                        c.agent_id,
-                        c.A,
-                        self.multiplier_graph.adj_mat,
-                        c.x,
-                        c.z,
-                        c.lam,
-                        c.prev_x,
-                        c.prev_z,
-                        c.objective_grad(
+                with Timer(f"total time for step {i}", verbose=self.verbose) as timer:
+                    timer.add_timer("caching previous step state variables", level=2)
+                    for c in self.companies:
+                        c.add_cache()
+                    timer.stop_timer("caching previous step state variables")
+                    # primal update
+                    timer.add_timer("preparation of args for primal update", level=2)
+                    # update offset of the linear constraints for all companies
+                    # for c in self.companies:
+                    #     c.update_offset(
+                    #         [oc for oc in self.companies if oc.agent_id != c.agent_id]
+                    #     )
+                    # collect arguments for the parallel computation
+                    args = [
+                        (
+                            c.agent_id,
+                            c.A,
+                            self.multiplier_graph.adj_mat,
                             c.x,
-                            c.decision_profile(
-                                [
-                                    oc
-                                    for oc in self.companies
-                                    if oc.agent_id != c.agent_id
-                                ],
-                                True,
+                            c.z,
+                            c.lam,
+                            c.prev_x,
+                            c.prev_z,
+                            c.objective_grad(
+                                c.x,
+                                c.decision_profile(
+                                    [
+                                        oc
+                                        for oc in self.companies
+                                        if oc.agent_id != c.agent_id
+                                    ],
+                                    True,
+                                ),
                             ),
-                        ),
-                        c.omega,
-                        c.alpha or 0,
-                        c.tau,
-                        c.nu,
-                        [
-                            oc.agent_id
-                            for oc in self.companies
-                            if oc.agent_id != c.agent_id
-                        ],
-                        [oc.lam for oc in self.companies if oc.agent_id != c.agent_id],
+                            c.omega,
+                            c.alpha or 0,
+                            c.tau,
+                            c.nu,
+                            [
+                                oc.agent_id
+                                for oc in self.companies
+                                if oc.agent_id != c.agent_id
+                            ],
+                            [
+                                oc.lam
+                                for oc in self.companies
+                                if oc.agent_id != c.agent_id
+                            ],
+                        )
+                        for c in self.companies
+                    ]
+                    timer.stop_timer("preparation of args for primal update")
+                    timer.add_timer("starmap for primal update", level=2)
+                    # parallel computation
+                    updated_args = pool.starmap(F.primal_update, args)
+                    timer.stop_timer("starmap for primal update")
+                    timer.add_timer(
+                        "unpacking and updating company state variables for primal update",
+                        level=2,
                     )
-                    for c in self.companies
-                ]
-                if self.verbose > 1:
-                    print(
-                        f"preparation of args for primal update took {1000*(time.time() - start):.4f} ms"
+                    # update primal variables
+                    for c, updated_arg in zip(self.companies, updated_args):
+                        c._decision = updated_arg[0]
+                        c._aux_var = updated_arg[1]
+                    timer.stop_timer(
+                        "unpacking and updating company state variables for primal update"
                     )
-                start = time.time()
-                # parallel computation
-                updated_args = pool.starmap(F.primal_update, args)
-                if self.verbose > 1:
-                    print(
-                        f"starmap for primal update took {1000*(time.time() - start):.4f} ms"
+                    # dual update
+                    timer.add_timer("preparation of args for dual update", level=2)
+                    # collect arguments for the parallel computation
+                    args = [
+                        (
+                            c.agent_id,
+                            c.A,
+                            c.b,
+                            self.multiplier_graph.adj_mat,
+                            c.x,
+                            c.z,
+                            c.lam,
+                            c.prev_x,
+                            c.prev_z,
+                            c.prev_lam,
+                            c._multiplier_orthant,
+                            c.alpha or 0,
+                            c.sigma,
+                            [
+                                oc.agent_id
+                                for oc in self.companies
+                                if c.agent_id != c.agent_id
+                            ],
+                            [
+                                oc.z
+                                for oc in self.companies
+                                if oc.agent_id != c.agent_id
+                            ],
+                            [
+                                oc.prev_z
+                                for oc in self.companies
+                                if oc.agent_id != c.agent_id
+                            ],
+                            [
+                                oc.lam
+                                for oc in self.companies
+                                if oc.agent_id != c.agent_id
+                            ],
+                        )
+                        for c in self.companies
+                    ]
+                    timer.stop_timer("preparation of args for dual update")
+                    timer.add_timer("starmap for dual update", level=2)
+                    # parallel computation
+                    updated_args = pool.starmap(F.dual_update, args)
+                    timer.stop_timer("starmap for dual update")
+                    timer.add_timer(
+                        "unpacking and updating company state variables for dual update",
+                        level=2,
                     )
-                start = time.time()
-                # update primal variables
-                for c, updated_arg in zip(self.companies, updated_args):
-                    c._decision = updated_arg[0]
-                    c._aux_var = updated_arg[1]
-                if self.verbose > 1:
-                    print(
-                        f"unpacking and updating company state variables for primal update took {1000*(time.time() - start):.4f} ms"
-                    )
-                # dual update
-                start = time.time()
-                # collect arguments for the parallel computation
-                args = [
-                    (
-                        c.agent_id,
-                        c.A,
-                        c.b,
-                        self.multiplier_graph.adj_mat,
-                        c.x,
-                        c.z,
-                        c.lam,
-                        c.prev_x,
-                        c.prev_z,
-                        c.prev_lam,
-                        c._multiplier_orthant,
-                        c.alpha or 0,
-                        c.sigma,
-                        [
-                            oc.agent_id
-                            for oc in self.companies
-                            if c.agent_id != c.agent_id
-                        ],
-                        [oc.z for oc in self.companies if oc.agent_id != c.agent_id],
-                        [
-                            oc.prev_z
-                            for oc in self.companies
-                            if oc.agent_id != c.agent_id
-                        ],
-                        [oc.lam for oc in self.companies if oc.agent_id != c.agent_id],
-                    )
-                    for c in self.companies
-                ]
-                if self.verbose > 1:
-                    print(
-                        f"preparation of args for dual update took {1000*(time.time() - start):.4f} ms"
-                    )
-                start = time.time()
-                # parallel computation
-                updated_args = pool.starmap(F.dual_update, args)
-                if self.verbose > 1:
-                    print(
-                        f"starmap for dual update took {1000*(time.time() - start):.4f} ms"
-                    )
-                start = time.time()
-                # update dual variables
-                for c, updated_arg in zip(self.companies, updated_args):
-                    c._multiplier = updated_arg
-                if self.verbose > 1:
-                    print(
-                        f"unpacking and updating company state variables for dual update took {1000*(time.time() - start):.4f} ms"
-                    )
-                if self.verbose > 0:
-                    print(
-                        f"total time for step {i} took {1000*(time.time() - tot_start):.4f} ms"
+                    # update dual variables
+                    for c, updated_arg in zip(self.companies, updated_args):
+                        c._multiplier = updated_arg
+                    timer.stop_timer(
+                        "unpacking and updating company state variables for dual update"
                     )
 
     def is_convergent(
