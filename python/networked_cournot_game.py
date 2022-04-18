@@ -44,7 +44,7 @@ class Company(Agent):
         step_sizes: Sequence[float] = [0.1, 0.1, 0.1],
         alpha: Optional[float] = None,
         cache_size: int = -1,
-        random_init: bool = True,
+        random_init: bool = False,
     ) -> NoReturn:
         """
 
@@ -78,12 +78,12 @@ class Company(Agent):
             3-tuples of step sizes for x, z, and lam, respectively,
             namely tau, nu, and sigma, respectively
         alpha: float, optional,
-            factor for the extrapolation of the variables (x, z, lambda)
+            factor for the extrapolation of the variables (x, z, lam)
         cache_size: int, default -1,
-            size of the cache for the variables (x, lambda),
+            size of the cache for the variables (x, lam),
             shoule be a positive integer, or -1 for unlimited cache size
-        random_init: bool, default True,
-            whether to initialize the variables (z, lambda) randomly or by zeros,
+        random_init: bool, default False,
+            whether to initialize the variables (z, lam) randomly or by zeros,
             note that init of x is always done randomly
 
         """

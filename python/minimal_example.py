@@ -152,6 +152,12 @@ def setup_minimal_example(
                 "b" is a sequence of np.ndarray, of length num_companies
             - verbose: int, default 0,
                 verbosity level for printing the simulation parameters
+            - cache_size: int, default -1,
+                size of the cache for the variables (x, lam),
+                shoule be a positive integer, or -1 for unlimited cache size
+            - random_init: bool, default False,
+                whether to initialize the variables (z, lam) randomly or by zeros,
+                note that init of x is always done randomly
 
     Returns
     -------
@@ -452,6 +458,8 @@ def setup_minimal_example(
                 product_cost_parameters["b"][company_id],
             ),
             step_sizes=step_sizes,
+            cache_size=kwargs.get("cache_size", -1),
+            random_init=kwargs.get("random_init", False),
         )
         for company_id in range(num_companies)
     ]
