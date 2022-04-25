@@ -1,7 +1,12 @@
 
 \subsection*{Observations}
 
-to write
+It is stated in the numerical study section of \cite{Yu_2017} that ``However, we rely on (110) in the simulations to examine the numerical performance regardless of solution feasibility.'', where (110) is the constraints on the market capacities, similar to
+\begin{align*}
+A_i x_i \leqslant r_i, ~ \sum r_i \leqslant r
+\end{align*}
+
+TO add more...
 
 \subsection*{Computation of Gradients}
 
@@ -41,10 +46,12 @@ with $\operatorname{Jac}(p_i)(x_i) = \left( \operatorname{Jac}(P)\left(\sum\limi
 % \end{align*}
 % \endgroup
 
-When $p$ is the linear inverse demand function $P(s) = p − Ds$, where $p, s \in \mathbb{R}^m$, $D = \operatorname{diag}(d_1, \ldots, d_m) \in \operatorname{GL}_m(\mathbb{R})$. Then $\operatorname{Jac}(P)(s) = -D$. Let the local production cost functions be $c_i(x_i) = \pi_i \left(\sum\limits_{j=1}^{n_i} [x_i]_j\right)^2 + b_i^Tx_i$, then $\operatorname{grad} c_i(x_i) = 2\pi_i x_i + b_i$. Therefore,
-$$
-\operatorname{grad} g(x_i) = 2\pi_i x_i + b_i + A_i^TDA_ix_i - A_i^T \left( p - D\sum\limits_{1 \leqslant j \leqslant N} A_jx_j \right).
-$$
+When $p$ is the linear inverse demand function $P(s) = p − Ds$, where $p, s \in \mathbb{R}^m$, $D = \operatorname{diag}(d_1, \ldots, d_m) \in \operatorname{GL}_m(\mathbb{R})$. Then $\operatorname{Jac}(P)(s) = -D$. Let the local production cost functions be $c_i(x_i) = \pi_i \left(\sum\limits_{j=1}^{n_i} [x_i]_j\right)^2 + b_i^Tx_i$, then $\operatorname{grad} c_i(x_i) = 2\pi_i \left(\sum\limits_{j=1}^{n_i} [x_i]_j\right) + b_i$. Therefore,
+\begin{align*}
+\operatorname{grad} g(x_i) & = \left(2\pi_i \left(\sum\limits_{j=1}^{n_i} [x_i]_j\right) + b_i \right) + \left( A_i^TDA_ix_i - A_i^T \left( p - D\sum\limits_{1 \leqslant j \leqslant N} A_jx_j \right) \right)
+\end{align*}
+
+The expression of $\operatorname{Jac}(p_i)(x_i)$ corresponds to the function \texttt{market\_price\_jac} in the file \texttt{python/simulation.py}, the expression of $\operatorname{grad} g(x_i)$ corresponds to the attribute \texttt{\_objective\_grad} of the \texttt{Company} class in \texttt{python/networked\_cournot\_game.py}.
 
 
 \subsection*{Minimal Example}
