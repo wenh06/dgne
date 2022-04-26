@@ -1,20 +1,78 @@
 
 \subsection*{Observations}
 
-It is stated in the numerical study section of \cite{Yu_2017} that ``However, we rely on (110) in the simulations to examine the numerical performance regardless of solution feasibility.'', where (110) is the constraints on the market capacities, similar to
+1. Problem Formulation: the Networked Cournot Game can be described by the following set of constrained optimization problems (ref. Equation (5) of \citep{Yi_2019}, note the difference in the last inequality constraints):
+\begin{equation}
+\label{eq:original_problem}
+\def\arraystretch{1}
+\begin{array}{rl}
+\min & g(x_i) = f_i(x_i, \mathbf{x}_{-i}) = c_i(x_i) - (P(Ax))^TA_ix_i \\
+\text{s.t.} & x_i \in \Omega_i \subsetneq \mathbb{R}^{n_i} \\
+& Ax \leqslant r
+\end{array}
+\qquad i = 1, \ldots, N
+\end{equation}
+where
 \begin{align*}
-A_i x_i \leqslant r_i, ~ \sum r_i \leqslant r
+& c_i: \Omega_i \to \mathbb{R} \text{ is the local production cost function,} \\
+& P: \mathbb{R}^m \to \mathbb{R}^m \text{ maps the total supply of each market to its corresponding price,}
+\end{align*}
+$A = [A_1, \ldots, A_N]$, $x = \operatorname{col}(x_1, \ldots, x_N)$, $Ax = \sum\limits_{1 \leqslant j \leqslant N} A_jx_j$, $\Omega_i$ the feasible set of $x_i$, usually a rectangle in the Euclidean space. The last constraint is called the shared affine coupling constraint.
+
+This set of optimization problems can be reformulated as unconstrained optimization problems:
+\begin{equation}
+\label{eq:reformulated_problem}
+\begin{array}{rl}
+\min & g_i(x_i) + \langle \lambda_i, r-Ax \rangle + \iota_{\Omega_i} (x_i), \quad \lambda_i \in \mathbb{R}_-^m
+\end{array}
+\end{equation}
+where $\iota_{\Omega_i} (x_i)$ is the indicator function of $\Omega_i$, whose subgradient is the normal cone $\mathcal{N}_{\Omega_i} (x_i)$ of $\Omega_i$, and $\operatorname{prox}_{\mathcal{N}_{\Omega_i}}(x_i) = \Pi_{\Omega_i}(x_i)$. Then applying (Douglas-Rachford? not the same) splitting, one gets the Algorithms (Algorithm 1 and 2) proposed in \citep{Yi_2019}.
+
+
+2. It is stated in the numerical study section of \citep{Yu_2017} that ``\textcolor{red!60}{However, we rely on (110) in the simulations to examine the numerical performance regardless of solution feasibility.}'', where (110) is the constraints on the market capacities, similar to
+\begin{align*}
+A_i x_i \leqslant r_i, ~ \sum r_i \leqslant r ~ (\text{or } \sum r_i = r).
 \end{align*}
 
-TO add more...
+In the first paragraph of section 3.2 of \citep{Yi_2019}, it is stated that ``\textcolor{red!60}{the shared affine coupling constraint is decomposed such that each player only knows a local block of the constraint matrix. Notice that $A_i$ characterizes how agent $i$ is involved in the coupling constraint (shares the global resource), also assumed to be privately known by player $i$. Then, the globally shared constraint $Ax \geqslant b$ couples the agents’ feasible decision sets, but is not known by any agent}''.
+
+\begin{question}
+What does it mean by ``each player only knows a local block of the constraint matrix''?
+\end{question}
+
+If one changes the original problem \eqref{eq:original_problem} to
+\begin{equation}
+\label{eq:new_problem}
+\def\arraystretch{1}
+\begin{array}{rl}
+\min & g(x_i) = f_i(x_i, \mathbf{x}_{-i}) = c_i(x_i) - (P(Ax))^TA_ix_i \\
+\text{s.t.} & x_i \in \Omega_i \subsetneq \mathbb{R}^{n_i} \\
+& A_ix_i \leqslant r_i \\
+& \sum r_i = r
+\end{array}
+\qquad i = 1, \ldots, N
+\end{equation}
+Then the reformulated unconstrained problem is
+\begin{equation}
+\label{eq:reformulated_new_problem}
+\begin{array}{rl}
+\min & g_i(x_i) + \langle \lambda_i, r_i-A_ix_i \rangle + \langle \mu_i, r - \sum r_i \rangle + \iota_{\Omega_i} (x_i), \quad \lambda_i \in \mathbb{R}_-^m
+\end{array}
+\end{equation}
+
+
+3. In the last paragraph of section 3.2 of \citep{Yi_2019}, it is stated that ``\textcolor{red!60}{The update of $z_i$ in Algorithm 1 can be regarded as the discrete-time integrator for the consensual errors of local multipliers, which will ensure the consensus of $\lambda_i$ eventually}''. Since the authors stated that ``In this work, we seek a GNE with the same Lagrangian multiplier for all the agents, called variational GNE'' in section 3.1
+
+\begin{question}
+What is the situation for problems where the multipliers do not need a consensus?
+\end{question}
 
 \subsection*{Computation of Gradients}
 
 Computation of the gradient of the function in equation (36) in \citep{Yi_2019}
 
-Let
+Consider the objective function
 $$g(x_i) = f_i(x_i, \mathbf{x}_{-i}) = c_i(x_i) - (P(Ax))^T A_ix_i,$$
-where $1 \leqslant i \leqslant N$, $x_i \in \mathbb{R}^{n_i}$, $c_i: \mathbb{R}^{n_i} \supset \Omega_i \to \mathbb{R}$ is the local production cost function, $P: \mathbb{R}^m \to \mathbb{R}^m$ maps the total supply of each market to its corresponding price, $A = [A_1, \ldots, A_N]$, $x = \operatorname{col}(x_1, \ldots, x_N)$, $Ax = \sum\limits_{1 \leqslant j \leqslant N} A_jx_j$. 
 
 Let $p_i: \mathbb{R}^{n_i} \to \mathbb{R}^m$ be the function of supply of the $i$-th company to the markets, i.e. $p_i(x_i) = P(Ax) = P\left(\sum\limits_{1 \leqslant j \leqslant N} A_jx_j\right)$. Then
 \begin{align*}

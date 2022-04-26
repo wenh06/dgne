@@ -1,6 +1,6 @@
 \documentclass[12pt]{article}
 % \usepackage[utf8]{inputenc}
-\usepackage[BoldFont,SlantFont]{xeCJK}
+% \usepackage[BoldFont,SlantFont]{xeCJK}
 \usepackage[top=2cm,bottom=2cm]{geometry}
 \usepackage{mathrsfs}
 \usepackage{amsthm,amsfonts,amsmath,amssymb}
@@ -39,7 +39,18 @@
 \usepackage{tikz}
 \usetikzlibrary{shapes,arrows,decorations.pathmorphing,backgrounds,positioning,fit,petri,calc}
 
+\usepackage{soul}
+\usepackage{xcolor}
+
+\newcommand{\ctext}[2]{%
+  \begingroup
+  \sethlcolor{#1}%
+  \hl{#2}%
+  \endgroup
+}
+
 \usepackage[style=ieee,natbib=true]{biblatex}
+% \setcitestyle{authoryear,open={[},close={]}}
 \addbibresource{ref.bib}
 
 \usepackage[ruled,linesnumbered]{algorithm2e}
