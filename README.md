@@ -22,6 +22,7 @@ The file [`functional.py`](/python/functional.py) re-implements the `primal upda
 The [test file](/python/docker_test.py), used along with [GitHub Pytest Action](https://github.com/wenh06/dgne/actions/workflows/run-pytest.yml) provides automatic test for the classes and algorithms.
 
 ### TODO
+
 1. (Done) ~~implement the `primal_update` and `dual_update` functions as external functions in [functional.py](/python/functional.py), instead of member methods of the `Agent` class, so that multiprocessing can be used for parallel computation.~~
 2. add stop criteria for the iteration.
 3. acceleration using [`JAX`](https://jax.readthedocs.io/en/latest/jax-101/01-jax-basics.html) or [`numba`](https://numba.pydata.org/).
