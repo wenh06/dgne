@@ -5,7 +5,6 @@
 
 A re-implementation of the paper \[[1](#ref1)\] (currently python, TODO matlab)
 
-
 ## [Python re-implementation](/python/)
 
 Agents are implemented as a class in [agent.py](/python/agent.py), conducting update and dual update. Variables and statistics (time consumption, value of objective function, norm of the gradient of the objective function, etc.) during the optimization process are maintained in this class as well.
@@ -22,18 +21,15 @@ The file [`functional.py`](/python/functional.py) re-implements the `primal upda
 
 The [test file](/python/docker_test.py), used along with [GitHub Pytest Action](https://github.com/wenh06/dgne/actions/workflows/run-pytest.yml) provides automatic test for the classes and algorithms.
 
-
 ### TODO
 1. (Done) ~~implement the `primal_update` and `dual_update` functions as external functions in [functional.py](/python/functional.py), instead of member methods of the `Agent` class, so that multiprocessing can be used for parallel computation.~~
 2. add stop criteria for the iteration.
 3. acceleration using [`JAX`](https://jax.readthedocs.io/en/latest/jax-101/01-jax-basics.html) or [`numba`](https://numba.pydata.org/).
 
-
 ## [Matlab re-implementation](/matlab/)
-
 
 ## [Complementary materials](/tex/)
 
-
 ## References
+
 1. <a name="ref1"></a> Yi P, Pavel L. An operator splitting approach for distributed generalized Nash equilibria computation[J]. Automatica, 2019, 102: 111-121.
